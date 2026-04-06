@@ -1,0 +1,1939 @@
+<!DOCTYPE html>
+<html lang="sk">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MTB Zones</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans:wght@300;400;600&display=swap');
+  :root{
+    --bg:#0d0d0d;--surface:#161616;--border:#2a2a2a;
+    --text:#e8e8e8;--muted:#666;
+    --z1:#2563eb;--z2:#16a34a;--z3:#ca8a04;--z4:#ea580c;--z5:#dc2626;
+    --accent:#f97316;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:var(--bg);color:var(--text);font-family:'IBM Plex Sans',sans-serif;min-height:100vh}
+  header{border-bottom:1px solid var(--border);padding:20px 32px;display:flex;align-items:baseline;gap:16px}
+  header h1{font-family:'Bebas Neue',sans-serif;font-size:2rem;letter-spacing:3px;color:var(--accent)}
+  header span{font-family:'IBM Plex Mono',monospace;font-size:.7rem;color:var(--muted);letter-spacing:1px;text-transform:uppercase}
+  main{max-width:1200px;margin:0 auto;padding:32px}
+  #setup-screen{display:block}
+  #app-screen{display:none}
+
+  /* SETUP */
+  .setup-card{background:var(--surface);border:1px solid var(--border);padding:32px;max-width:520px}
+  .setup-card h2{font-family:'Bebas Neue',sans-serif;font-size:1.4rem;letter-spacing:2px;margin-bottom:24px}
+  .field{margin-bottom:16px}
+  .field label{display:block;font-family:'IBM Plex Mono',monospace;font-size:.72rem;color:var(--muted);letter-spacing:1px;text-transform:uppercase;margin-bottom:6px}
+  .field input{width:100%;background:var(--bg);border:1px solid var(--border);color:var(--text);font-family:'IBM Plex Mono',monospace;font-size:.85rem;padding:10px 12px;outline:none;transition:border-color .15s}
+  .field input:focus{border-color:var(--accent)}
+  .info-box{background:#1a1a1a;border-left:3px solid var(--accent);padding:12px 16px;margin-bottom:24px;font-size:.8rem;color:var(--muted);line-height:1.6}
+  .info-box a{color:var(--accent);text-decoration:none}
+  .btn{display:inline-block;background:var(--accent);color:#000;font-family:'Bebas Neue',sans-serif;font-size:1rem;letter-spacing:2px;padding:12px 28px;border:none;cursor:pointer;transition:opacity .15s}
+  .btn:hover{opacity:.85}
+  .btn-secondary{background:transparent;color:var(--text);border:1px solid var(--border);font-family:'IBM Plex Mono',monospace;font-size:.78rem;letter-spacing:1px;padding:8px 16px}
+  .section-label{font-family:'IBM Plex Mono',monospace;font-size:.72rem;color:var(--muted);letter-spacing:1px;text-transform:uppercase;margin-bottom:10px}
+  .maxhr-row{display:flex;align-items:center;gap:12px;margin-bottom:20px}
+  .maxhr-row label{font-family:'IBM Plex Mono',monospace;font-size:.72rem;color:var(--muted);letter-spacing:1px;text-transform:uppercase;white-space:nowrap}
+  .maxhr-row input{width:80px;background:var(--bg);border:1px solid var(--border);color:var(--text);font-family:'IBM Plex Mono',monospace;font-size:.9rem;padding:8px 10px;outline:none;text-align:center}
+  .maxhr-row input:focus{border-color:var(--accent)}
+  .maxhr-row .bpm-label{font-family:'IBM Plex Mono',monospace;font-size:.72rem;color:var(--muted)}
+  .zones-table{width:100%;border-collapse:collapse;margin-bottom:24px}
+  .zones-table th{font-family:'IBM Plex Mono',monospace;font-size:.68rem;color:var(--muted);letter-spacing:1px;text-transform:uppercase;padding:6px 10px;text-align:left;border-bottom:1px solid var(--border)}
+  .zones-table td{padding:8px 10px;border-bottom:1px solid #1e1e1e;vertical-align:middle}
+  .zones-table input[type=number]{width:60px;background:var(--bg);border:1px solid var(--border);color:var(--text);font-family:'IBM Plex Mono',monospace;font-size:.82rem;padding:5px 8px;outline:none;text-align:center}
+  .zones-table input[type=number]:focus{border-color:var(--accent)}
+  .zone-dot{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:8px;vertical-align:middle}
+  .zone-name-cell{font-family:'Bebas Neue',sans-serif;font-size:1rem;letter-spacing:1px}
+  .bpm-preview{font-family:'IBM Plex Mono',monospace;font-size:.75rem;color:var(--muted)}
+
+  /* APP */
+  .top-bar{display:flex;align-items:center;justify-content:space-between;margin-bottom:32px;flex-wrap:wrap;gap:16px}
+  .user-info{display:flex;align-items:center;gap:12px}
+  .user-info img{width:36px;height:36px;border-radius:50%;border:1px solid var(--border)}
+  .user-info .name{font-weight:600;font-size:.9rem}
+  .user-info .sub{font-family:'IBM Plex Mono',monospace;font-size:.68rem;color:var(--muted)}
+  .settings-row{display:flex;gap:12px;align-items:center;flex-wrap:wrap}
+
+  /* SUMMARY */
+  .summary-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:1px;background:var(--border);margin-bottom:32px}
+  .summary-card{background:var(--surface);padding:20px 16px;text-align:center}
+  .summary-card .zone-name{font-family:'Bebas Neue',sans-serif;font-size:1.6rem;letter-spacing:2px;margin-bottom:4px}
+  .summary-card .zone-bpm{font-family:'IBM Plex Mono',monospace;font-size:.85rem;color:var(--muted);margin-bottom:8px;line-height:1.5}
+  .summary-card .zone-time{font-family:'IBM Plex Mono',monospace;font-size:.78rem;color:var(--muted);margin-bottom:4px}
+  .zone-pct-big{font-family:'Bebas Neue',sans-serif!important;font-size:1.6rem!important;line-height:1;margin-top:4px;margin-bottom:8px;color:inherit}
+  .zone-time-small{font-family:'IBM Plex Mono',monospace;font-size:.85rem;color:var(--muted);margin-bottom:4px}
+  .summary-card .zone-pct{font-family:'IBM Plex Mono',monospace;font-size:.75rem;color:var(--muted)}
+  .bar-container{height:8px;background:var(--border);margin-top:10px}
+  .bar-fill{height:100%;transition:width .6s ease}
+
+  /* PROGRESS */
+  .progress-section{background:var(--surface);border:1px solid var(--border);padding:20px;margin-bottom:24px}
+  .progress-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px}
+  .progress-header span{font-family:'IBM Plex Mono',monospace;font-size:.75rem;color:var(--muted)}
+  .progress-bar{height:4px;background:var(--border);overflow:hidden}
+  .progress-fill{height:100%;background:var(--accent);transition:width .3s}
+  .progress-log{margin-top:10px;font-family:'IBM Plex Mono',monospace;font-size:.7rem;color:var(--muted);max-height:80px;overflow-y:auto}
+  .progress-log div{padding:1px 0}
+
+  /* FILTER BAR */
+  .filter-bar{background:var(--surface);border:1px solid var(--border);padding:16px 18px;margin-bottom:24px}
+  .filter-bar-row{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:12px}
+  .filter-bar-row:last-child{margin-bottom:0}
+  .date-preset-btn{font-family:'IBM Plex Mono',monospace;font-size:.7rem;padding:5px 12px;background:transparent;color:var(--muted);border:1px solid var(--border);cursor:pointer;letter-spacing:1px;text-transform:uppercase;transition:all .15s;white-space:nowrap}
+  .date-preset-btn.active{background:var(--accent);color:#000;border-color:var(--accent)}
+  .date-sep{color:var(--border);font-size:.8rem}
+  .date-range-inputs{display:flex;align-items:center;gap:8px}
+  .date-range-inputs input[type=date]{background:var(--bg);border:1px solid var(--border);color:var(--text);font-family:'IBM Plex Mono',monospace;font-size:.75rem;padding:5px 10px;outline:none}
+  .date-range-inputs input[type=date]:focus{border-color:var(--accent)}
+  .date-range-inputs input[type=date]::-webkit-calendar-picker-indicator{filter:invert(.6);cursor:pointer}
+  .date-range-sep{font-family:'IBM Plex Mono',monospace;font-size:.72rem;color:var(--muted)}
+
+  /* RANGE SLIDERS */
+  .slider-filters{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;padding-top:12px;border-top:1px solid var(--border)}
+  .slider-group{}
+  .slider-label{font-family:'IBM Plex Mono',monospace;font-size:.65rem;color:var(--muted);letter-spacing:1px;text-transform:uppercase;margin-bottom:6px;display:flex;justify-content:space-between}
+  .slider-label span{color:var(--accent)}
+  .slider-track{position:relative;height:4px;background:var(--border);border-radius:2px;margin:8px 0}
+  .slider-range{position:absolute;height:100%;background:var(--accent);border-radius:2px}
+  .slider-inputs{display:flex;gap:6px;align-items:center}
+  .slider-inputs input[type=range]{flex:1;-webkit-appearance:none;appearance:none;height:4px;background:transparent;outline:none;cursor:pointer}
+  .slider-inputs input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:14px;height:14px;border-radius:50%;background:var(--accent);cursor:pointer;border:2px solid var(--bg)}
+  .slider-inputs input[type=range]::-moz-range-thumb{width:14px;height:14px;border-radius:50%;background:var(--accent);cursor:pointer;border:2px solid var(--bg)}
+
+  /* TABLE */
+  .table-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:16px}
+  .table-header h3{font-family:'Bebas Neue',sans-serif;font-size:1.2rem;letter-spacing:2px}
+  .filter-row{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px}
+  .filter-btn{font-family:'IBM Plex Mono',monospace;font-size:.7rem;padding:5px 12px;background:transparent;color:var(--muted);border:1px solid var(--border);cursor:pointer;letter-spacing:1px;text-transform:uppercase;transition:all .15s}
+  .filter-btn.active{background:var(--accent);color:#000;border-color:var(--accent)}
+  table{width:100%;border-collapse:collapse}
+  th{font-family:'IBM Plex Mono',monospace;font-size:.68rem;color:var(--muted);letter-spacing:1px;text-transform:uppercase;text-align:left;padding:8px 10px;border-bottom:1px solid var(--border);cursor:pointer;user-select:none;white-space:nowrap}
+  th:hover{color:var(--text)}
+  td{padding:9px 10px;font-size:.82rem;border-bottom:1px solid #1e1e1e;vertical-align:middle}
+  tr.clickable:hover td{background:#1a1a1a;cursor:pointer}
+  tr.active-row td{background:#1e1400 !important}
+  .td-mono{font-family:'IBM Plex Mono',monospace;font-size:.76rem}
+  .zone-pct-cell{text-align:center;font-family:'IBM Plex Mono',monospace;font-size:.76rem;padding:6px 6px !important}
+  .zone-pct-dom{font-weight:700;font-size:.82rem;padding:2px 6px;border-radius:2px}
+  .zone-pct-dim{opacity:.65}
+
+  /* PAGINATION */
+  .pagination{display:flex;gap:4px;justify-content:center;margin-top:20px;flex-wrap:wrap}
+  .page-btn{font-family:'IBM Plex Mono',monospace;font-size:.72rem;padding:5px 10px;background:transparent;color:var(--muted);border:1px solid var(--border);cursor:pointer}
+  .page-btn.active{background:var(--accent);color:#000;border-color:var(--accent)}
+  .page-btn:hover:not(.active){border-color:var(--text);color:var(--text)}
+
+  /* MAP PANEL */
+  .map-panel{background:var(--surface);border:1px solid var(--border);margin-bottom:24px;display:none}
+  .map-panel-header{display:flex;justify-content:space-between;align-items:center;padding:14px 18px;border-bottom:1px solid var(--border)}
+  .map-panel-title{font-family:'Bebas Neue',sans-serif;font-size:1.1rem;letter-spacing:2px;color:var(--text)}
+  .map-panel-meta{display:flex;gap:0;flex-wrap:nowrap;padding:12px 18px;border-bottom:1px solid var(--border);width:100%}
+  .map-panel-meta{display:block !important;padding:0 !important}
+  .map-meta-row{display:flex;flex-wrap:nowrap;width:100%}
+  .map-meta-row-1{background:#1a1a1a;border-bottom:1px solid var(--border)}
+  .map-meta-row-2{background:#1a1a1a;border-bottom:1px solid var(--border)}
+  .map-meta-item{font-family:'IBM Plex Mono',monospace;font-size:.72rem;flex:1;text-align:center;padding:8px 6px;border-right:1px solid var(--border)}
+  .map-meta-item:last-child{border-right:none}
+  .map-meta-headline{font-family:'IBM Plex Mono',monospace;font-size:.72rem;color:var(--text);padding:10px 18px;background:#111;border-bottom:1px solid var(--border);line-height:1.5}
+  .map-meta-label{color:var(--muted);display:block;margin-bottom:2px;font-size:.65rem;text-transform:uppercase;letter-spacing:1px}
+  .map-meta-val{color:var(--text)}
+  .map-meta-accent{color:var(--accent)}
+  #activity-map{height:380px;background:#111}
+  .map-close-btn{font-family:'IBM Plex Mono',monospace;font-size:.7rem;background:transparent;color:var(--muted);border:1px solid var(--border);padding:4px 10px;cursor:pointer;letter-spacing:1px}
+  .map-close-btn:hover{color:var(--text);border-color:var(--text)}
+  .map-toggle-bar{display:flex;gap:1px;background:var(--border);border-bottom:1px solid var(--border)}
+  .map-toggle-btn{flex:1;font-family:'IBM Plex Mono',monospace;font-size:.72rem;letter-spacing:1px;text-transform:uppercase;padding:9px;background:var(--surface);color:var(--muted);border:none;cursor:pointer;transition:all .15s}
+  .map-toggle-btn:hover{background:#1e1e1e;color:var(--text)}
+  .map-toggle-btn.active{background:#1e1400;color:var(--accent)}
+  .map-meta-clickable{cursor:pointer;border-bottom:1px dashed var(--border);transition:border-color .15s}
+  .map-meta-clickable:hover{border-bottom-color:var(--accent)}
+  .map-meta-clickable{cursor:pointer;border-bottom:1px dashed var(--border);transition:border-color .15s}
+  .map-meta-clickable:hover{border-bottom-color:var(--accent)}
+
+  /* MISC */
+  .toast{position:fixed;bottom:24px;right:24px;background:var(--accent);color:#000;font-family:'IBM Plex Mono',monospace;font-size:.78rem;padding:10px 18px;opacity:0;transition:opacity .3s;pointer-events:none;z-index:999}
+  .toast.show{opacity:1}
+  .rate-warn{background:#1a1200;border:1px solid #ca8a04;color:#ca8a04;font-family:'IBM Plex Mono',monospace;font-size:.75rem;padding:10px 14px;margin-bottom:16px;display:none}
+  .recalc-notice{background:#1a0e00;border:1px solid var(--accent);color:var(--accent);font-family:'IBM Plex Mono',monospace;font-size:.72rem;padding:10px 14px;margin-bottom:16px;display:none}
+  .modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:100;align-items:center;justify-content:center}
+  .modal-box{background:var(--surface);border:1px solid var(--border);padding:32px;min-width:420px;max-width:90vw}
+  .modal-box h2{font-family:'Bebas Neue',sans-serif;letter-spacing:2px;margin-bottom:20px;font-size:1.4rem}
+
+  @media(max-width:700px){
+    .summary-grid{grid-template-columns:repeat(3,1fr)}
+    main{padding:16px}
+    .modal-box{min-width:unset;width:95vw}
+    .slider-filters{grid-template-columns:1fr}
+  }
+</style>
+</head>
+<body>
+<header>
+  <h1>MTB Zones</h1>
+  <span>Heart Rate Analysis</span>
+</header>
+<main>
+
+<!-- SETUP -->
+<div id="setup-screen">
+  <div class="setup-card">
+    <h2>Nastavenie</h2>
+    <div class="info-box">
+      Potrebuješ Strava API aplikáciu. Vytvor ju na <a href="https://www.strava.com/settings/api" target="_blank">strava.com/settings/api</a>.
+    </div>
+    <div class="field"><label>Client ID</label><input type="text" id="client-id" placeholder="12345"></div>
+    <div class="field"><label>Client Secret</label><input type="password" id="client-secret" placeholder="abc123..."></div>
+    <div class="section-label" style="margin-top:24px">Max tepová frekvencia</div>
+    <div class="maxhr-row">
+      <label>Max HR</label>
+      <input type="number" id="setup-maxhr" value="190" min="100" max="220">
+      <span class="bpm-label">BPM</span>
+    </div>
+    <div class="section-label">Tepové zóny (% z max HR)</div>
+    <table class="zones-table">
+      <thead><tr><th>Zóna</th><th>Od %</th><th>Do %</th><th>BPM náhľad</th></tr></thead>
+      <tbody id="setup-zones-tbody"></tbody>
+    </table>
+    <button class="btn" onclick="startOAuth()">Pripojiť Strava</button>
+  </div>
+</div>
+
+<!-- APP -->
+<div id="app-screen">
+  <div class="top-bar">
+    <div class="user-info">
+      <img id="athlete-avatar" src="" alt="">
+      <div>
+        <div class="name" id="athlete-name"></div>
+        <div class="sub" id="athlete-sub"></div>
+      </div>
+    </div>
+    <div class="settings-row">
+      <button class="btn btn-secondary" onclick="openZoneEditor()">Upraviť zóny</button>
+      <button class="btn btn-secondary" onclick="logout()">Odhlásiť</button>
+    </div>
+  </div>
+
+  <div id="rate-warn" class="rate-warn">⚠ Strava API rate limit – čaká sa 15 minút.</div>
+  <div id="recalc-notice" class="recalc-notice">Prepočítavam zóny...</div>
+
+  <div id="progress-section" class="progress-section" style="display:none">
+    <div class="progress-header">
+      <span id="progress-label">Načítavam...</span>
+      <span id="progress-count">0 / 0</span>
+    </div>
+    <div class="progress-bar"><div class="progress-fill" id="progress-fill" style="width:0%"></div></div>
+    <div class="progress-log" id="progress-log"></div>
+  </div>
+
+  <!-- SUMMARY -->
+  <div class="summary-grid">
+    <div class="summary-card"><div class="zone-name" style="color:var(--z1)">Z1</div><div class="zone-bpm" id="sc-z1-bpm"></div><div class="zone-pct zone-pct-big" style="color:var(--z1)" id="sc-z1-pct">–</div><div class="zone-time zone-time-small" id="sc-z1-time">–</div><div class="bar-container"><div class="bar-fill" style="background:var(--z1);width:0%" id="sc-z1-bar"></div></div></div>
+    <div class="summary-card"><div class="zone-name" style="color:var(--z2)">Z2</div><div class="zone-bpm" id="sc-z2-bpm"></div><div class="zone-pct zone-pct-big" style="color:var(--z2)" id="sc-z2-pct">–</div><div class="zone-time zone-time-small" id="sc-z2-time">–</div><div class="bar-container"><div class="bar-fill" style="background:var(--z2);width:0%" id="sc-z2-bar"></div></div></div>
+    <div class="summary-card"><div class="zone-name" style="color:var(--z3)">Z3</div><div class="zone-bpm" id="sc-z3-bpm"></div><div class="zone-pct zone-pct-big" style="color:var(--z3)" id="sc-z3-pct">–</div><div class="zone-time zone-time-small" id="sc-z3-time">–</div><div class="bar-container"><div class="bar-fill" style="background:var(--z3);width:0%" id="sc-z3-bar"></div></div></div>
+    <div class="summary-card"><div class="zone-name" style="color:var(--z4)">Z4</div><div class="zone-bpm" id="sc-z4-bpm"></div><div class="zone-pct zone-pct-big" style="color:var(--z4)" id="sc-z4-pct">–</div><div class="zone-time zone-time-small" id="sc-z4-time">–</div><div class="bar-container"><div class="bar-fill" style="background:var(--z4);width:0%" id="sc-z4-bar"></div></div></div>
+    <div class="summary-card"><div class="zone-name" style="color:var(--z5)">Z5</div><div class="zone-bpm" id="sc-z5-bpm"></div><div class="zone-pct zone-pct-big" style="color:var(--z5)" id="sc-z5-pct">–</div><div class="zone-time zone-time-small" id="sc-z5-time">–</div><div class="bar-container"><div class="bar-fill" style="background:var(--z5);width:0%" id="sc-z5-bar"></div></div></div>
+  </div>
+
+  <!-- MAP PANEL -->
+  <div class="map-panel" id="map-panel">
+    <div class="map-panel-header">
+      <span class="map-panel-title" id="map-title">Aktivita</span>
+      <button class="map-close-btn" onclick="closeMap()">Zavrieť</button>
+    </div>
+    <div class="map-panel-meta" id="map-meta"></div>
+    <div class="map-toggle-bar">
+      <button class="map-toggle-btn active" id="toggle-normal" onclick="setMapMode('normal')">Celá trasa</button>
+      <button class="map-toggle-btn" id="toggle-hr" onclick="setMapMode('hr')">HR mapa</button>
+      <button class="map-toggle-btn" id="toggle-cei" onclick="setMapMode('cei')">CEI segmenty</button>
+    </div>
+    <div id="activity-map"></div>
+    <div id="elev-chart-container" style="display:none;background:var(--surface);padding:12px 0">
+      <div style="display:flex;align-items:stretch">
+        <div style="width:80%;flex-shrink:0;height:132px;position:relative">
+          <canvas id="elev-chart" style="display:block"></canvas>
+        </div>
+        <div id="elev-legend" style="flex:1;padding:8px 16px;display:flex;flex-direction:column;justify-content:center;align-items:center;gap:5px;border-left:1px solid var(--border);box-sizing:border-box"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- FILTER BAR -->
+  <div class="filter-bar">
+    <div class="filter-bar-row">
+      <button class="date-preset-btn active" onclick="setPreset('year',this)">Tento rok</button>
+      <button class="date-preset-btn" onclick="setPreset('last3',this)">Posledné 3 mes.</button>
+      <button class="date-preset-btn" onclick="setPreset('last30',this)">Posledných 30 dní</button>
+      <button class="date-preset-btn" onclick="setPreset('all',this)">Celé obdobie</button>
+      <div class="date-sep">|</div>
+      <div class="date-range-inputs">
+        <input type="date" id="date-from" onchange="setCustomRange()">
+        <span class="date-range-sep">–</span>
+        <input type="date" id="date-to" onchange="setCustomRange()">
+      </div>
+    </div>
+    <div class="slider-filters">
+      <div class="slider-group">
+        <div class="slider-label">Vzdialenosť (km) <span id="sl-dist-val"></span></div>
+        <div style="position:relative;padding:0 7px">
+          <input type="range" id="sl-dist-min" min="0" max="200" value="0" oninput="onSlider()">
+          <input type="range" id="sl-dist-max" min="0" max="200" value="200" oninput="onSlider()">
+        </div>
+      </div>
+      <div class="slider-group">
+        <div class="slider-label">Čas (hod) <span id="sl-time-val"></span></div>
+        <div style="position:relative;padding:0 7px">
+          <input type="range" id="sl-time-min" min="0" max="12" value="0" step="0.5" oninput="onSlider()">
+          <input type="range" id="sl-time-max" min="0" max="12" value="12" step="0.5" oninput="onSlider()">
+        </div>
+      </div>
+      <div class="slider-group">
+        <div class="slider-label">Nastúpané (m) <span id="sl-elev-val"></span></div>
+        <div style="position:relative;padding:0 7px">
+          <input type="range" id="sl-elev-min" min="0" max="3000" value="0" step="50" oninput="onSlider()">
+          <input type="range" id="sl-elev-max" min="0" max="3000" value="3000" step="50" oninput="onSlider()">
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="table-header">
+    <h3>Aktivity</h3>
+    <div style="font-family:'IBM Plex Mono',monospace;font-size:.7rem;color:var(--muted)" id="total-count"></div>
+  </div>
+  <div class="filter-row">
+    <button class="filter-btn active" onclick="setFilter('all',this)">Všetky</button>
+    <button class="filter-btn" onclick="setFilter('hr',this)">S HR dátami</button>
+    <button class="filter-btn" onclick="setFilter('nohr',this)">Bez HR</button>
+    <button class="filter-btn" onclick="setFilter('z2',this)" style="color:#16a34a">Z2 ENDURANCE</button>
+    <button class="filter-btn" onclick="setFilter('interval',this)" style="color:#dc2626">INTERVAL</button>
+    <button class="filter-btn" onclick="setFilter('tempo',this)" style="color:#ca8a04">TEMPO</button>
+    <button class="filter-btn" onclick="setFilter('mix',this)" style="color:#666">MIX</button>
+  </div>
+  <div style="overflow-x:auto">
+    <table>
+      <thead>
+        <tr>
+          <th onclick="sortTable('date')" style="white-space:nowrap">Dátum ↕</th>
+          <th onclick="sortTable('type')" style="text-align:center;white-space:nowrap">Typ ↕</th>
+          <th onclick="sortTable('name')" style="min-width:160px">Aktivita ↕</th>
+          <th onclick="sortTable('duration')" style="text-align:center;white-space:nowrap">Trvanie ↕</th>
+          <th onclick="sortTable('distance')" style="text-align:center;white-space:nowrap">km ↕</th>
+          <th style="text-align:center;color:var(--z1)">Z1</th>
+          <th style="text-align:center;color:var(--z2)">Z2</th>
+          <th style="text-align:center;color:var(--z3)">Z3</th>
+          <th style="text-align:center;color:var(--z4)">Z4</th>
+          <th style="text-align:center;color:var(--z5)">Z5</th>
+          <th onclick="sortTable('avghr')" style="text-align:center;white-space:nowrap">Avg HR ↕</th>
+          <th onclick="sortTable('maxhr')" style="text-align:center;white-space:nowrap">Max HR ↕</th>
+          <th onclick="sortTable('elevation')" style="text-align:center;white-space:nowrap">↑ m ↕</th>
+          <th onclick="sortTable('vam2')" style="text-align:center;white-space:nowrap;color:var(--accent)" title="VAM2">VAM ↕</th>
+          <th onclick="sortTable('cei2')" style="text-align:center;white-space:nowrap;color:var(--accent)" title="CEI2">CEI ↕</th>
+          <th onclick="sortTable('trimpB')" style="text-align:center;white-space:nowrap;color:#a78bfa" title="Banister TRIMP">TRIMP ↕</th>
+        </tr>
+      </thead>
+      <tbody id="activity-tbody"></tbody>
+    </table>
+  </div>
+  <div class="pagination" id="pagination"></div>
+</div>
+</main>
+
+<!-- ZONE EDITOR -->
+<div class="modal-overlay" id="zone-modal">
+  <div class="modal-box">
+    <h2>Upraviť zóny</h2>
+    <div class="maxhr-row" style="margin-bottom:20px">
+      <label>Max HR</label>
+      <input type="number" id="modal-maxhr" min="100" max="220">
+      <span class="bpm-label">BPM</span>
+    </div>
+    <div class="section-label">Tepové zóny (% z max HR)</div>
+    <table class="zones-table">
+      <thead><tr><th>Zóna</th><th>Od %</th><th>Do %</th><th>BPM náhľad</th></tr></thead>
+      <tbody id="modal-zones-tbody"></tbody>
+    </table>
+    <div style="display:flex;gap:12px;margin-top:20px">
+      <button class="btn" onclick="saveZones()">Uložiť a prepočítať</button>
+      <button class="btn btn-secondary" onclick="closeZoneEditor()">Zrušiť</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const ZONE_DEFS=[
+  {key:'z1',label:'Z1',color:'var(--z1)',defMin:0, defMax:60},
+  {key:'z2',label:'Z2',color:'var(--z2)',defMin:61,defMax:75},
+  {key:'z3',label:'Z3',color:'var(--z3)',defMin:76,defMax:85},
+  {key:'z4',label:'Z4',color:'var(--z4)',defMin:86,defMax:95},
+  {key:'z5',label:'Z5',color:'var(--z5)',defMin:96,defMax:100},
+];
+const ZKEYS=ZONE_DEFS.map(z=>z.key);
+const MIN_SLOPE_TOTAL=3.0;  // % threshold for VAM_total
+const MIN_SLOPE_CLIMB=5.0;  // % threshold for VAM_climb
+const DP_TOLERANCE=0.5;     // metres, Douglas-Peucker altitude simplification
+const PRE_SMOOTH_WIN=4;     // seconds, pre-DP moving average
+const HR_REST=59;           // pokojový tep
+const HR_MAX=203;           // maximálny tep
+
+function classifyRide(pct){
+  if(!pct) return null;
+  if((pct.z4+pct.z5)>20) return 'INTERVAL';
+  if(pct.z3>30) return 'TEMPO';
+  if((pct.z1+pct.z2)>80) return 'Z2 ENDURANCE';
+  return 'MIX';
+}
+
+const RIDE_TYPE_COLORS={
+  'Z2 ENDURANCE':'#16a34a',
+  'INTERVAL':'#dc2626',
+  'TEMPO':'#ca8a04',
+  'MIX':'#666',
+};
+
+const PEERS_COUNT=12; // počet jázd rovnakého typu pre percentily
+
+function getPeers(activity, metric){
+  // Last PEERS_COUNT rides of same type before this activity
+  const type=activity.rideType;
+  const sorted=state.activities
+    .filter(a=>a.hasHR&&a.zones?.[metric]!=null&&a.rideType===type&&a.id!==activity.id&&a.date<activity.date)
+    .sort((a,b)=>b.date.localeCompare(a.date))
+    .slice(0,PEERS_COUNT);
+  return sorted;
+}
+
+function getPercentileBadge(val, peers, metric){
+  if(peers.length<PEERS_COUNT) return null;
+  const vals=peers.map(a=>parseFloat(a.zones[metric])).sort((a,b)=>a-b);
+  const p30=vals[Math.floor(vals.length*0.3)];
+  const p70=vals[Math.floor(vals.length*0.7)];
+  if(val>p70) return '🟢';
+  if(val<p30) return '🔴';
+  return '🟡';
+}
+
+function ceiArrow(badge){
+  if(!badge) return '';
+  if(badge==='🟢') return '<span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:#16a34a;margin-left:5px;vertical-align:middle"></span>';
+  if(badge==='🔴') return '<span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:#dc2626;margin-left:5px;vertical-align:middle"></span>';
+  return '<span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:#ca8a04;margin-left:5px;vertical-align:middle"></span>';
+}
+
+function getCeiBadge(activity){
+  if(!activity.zones?.cei2) return null;
+  const peers=getPeers(activity,'cei2');
+  return getPercentileBadge(parseFloat(activity.zones.cei2), peers, 'cei2');
+}
+
+function getHeadline(activity){
+  if(!activity.zones?.cei||!activity.rideType) return null;
+  const ceiPeers=getPeers(activity,'cei2');
+  const vamPeers=getPeers(activity,'vam2');
+  if(ceiPeers.length<PEERS_COUNT) return `Nedostatok dát pre hodnotenie (potrebných ${PEERS_COUNT} jázd typu ${activity.rideType}).`;
+
+  const ceiVals=ceiPeers.map(a=>parseFloat(a.zones.cei2));
+  const vamVals=vamPeers.map(a=>a.zones.vam2).filter(v=>v!=null);
+  const avgCei=ceiVals.reduce((s,v)=>s+v,0)/ceiVals.length;
+  const avgVam=vamVals.length?vamVals.reduce((s,v)=>s+v,0)/vamVals.length:null;
+  const sortedCei=[...ceiVals].sort((a,b)=>a-b);
+  const p30=sortedCei[Math.floor(sortedCei.length*0.3)];
+  const p70=sortedCei[Math.floor(sortedCei.length*0.7)];
+  const cei=parseFloat(activity.zones.cei2);
+  const vam=activity.zones.vam2;
+  const ceiDiff=((cei-avgCei)/avgCei*100).toFixed(0);
+  const vamDiff=avgVam?((vam-avgVam)/avgVam*100).toFixed(0):null;
+  const rank=ceiVals.filter(v=>v<cei).length;
+  const pct=Math.round(rank/ceiVals.length*100);
+
+  let icon, verdict, detail='';
+  if(cei>p70){
+    icon='<span style="color:#16a34a">↑</span>';
+    verdict='Vynikajúca efektivita.';
+    detail=`CEI ${ceiDiff>0?'+':''}${ceiDiff}% oproti priemeru posledných ${PEERS_COUNT} jázd (${activity.rideType}).`;
+  }else if(cei<p30){
+    icon='<span style="color:#ea580c">↓</span>';
+    verdict='Podpriemerná efektivita.';
+    detail=`CEI ${ceiDiff}% oproti priemeru posledných ${PEERS_COUNT} jázd (${activity.rideType}).`;
+  }else{
+    icon='<span style="color:#ca8a04">↕</span>';
+    verdict='Štandardný výkon.';
+    detail=`CEI v strednom pásme posledných ${PEERS_COUNT} jázd (${activity.rideType}).`;
+  }
+  if(vamDiff!=null) detail+=` VAM ${vamDiff>0?'+':''}${vamDiff}% vs. priemer.`;
+  detail+=` (${pct}. percentil, P70=${fmtDec(p70)})`;
+  return `${icon} ${verdict} ${detail}`;
+}
+
+let state={
+  accessToken:null,clientId:null,clientSecret:null,athlete:null,
+  maxHR:190,
+  zones:ZONE_DEFS.map(z=>({key:z.key,pctMin:z.defMin,pctMax:z.defMax})),
+  activities:[],
+  filter:'all',sort:{col:'date',dir:-1},page:0,pageSize:20,
+  dateFrom:null,dateTo:null,
+  slDist:[0,200],slTime:[0,12],slElev:[0,3000],
+  openActivityId:null,
+};
+
+// ─── INDEXEDDB ────────────────────────────────────────────────────────────────
+let db=null;
+function openDB(){
+  return new Promise((res,rej)=>{
+    const req=indexedDB.open('mtbzones_v5',1);
+    req.onupgradeneeded=e=>{
+      const d=e.target.result;
+      if(!d.objectStoreNames.contains('streams')) d.createObjectStore('streams',{keyPath:'id'});
+      if(!d.objectStoreNames.contains('meta')) d.createObjectStore('meta',{keyPath:'key'});
+    };
+    req.onsuccess=e=>{db=e.target.result;res()};
+    req.onerror=()=>rej(req.error);
+  });
+}
+const dbPut=(store,obj)=>new Promise((res,rej)=>{
+  const tx=db.transaction(store,'readwrite');
+  tx.objectStore(store).put(obj).onsuccess=()=>res();
+  tx.onerror=()=>rej(tx.error);
+});
+const dbGet=(store,key)=>new Promise((res,rej)=>{
+  const tx=db.transaction(store,'readonly');
+  const req=tx.objectStore(store).get(key);
+  req.onsuccess=()=>res(req.result);
+  req.onerror=()=>rej(req.error);
+});
+async function saveMeta(){
+  await dbPut('meta',{key:'state',
+    accessToken:state.accessToken,clientId:state.clientId,clientSecret:state.clientSecret,
+    maxHR:state.maxHR,zones:state.zones,activities:state.activities,athlete:state.athlete,
+  });
+}
+async function loadMeta(){
+  const s=await dbGet('meta','state');
+  if(!s)return;
+  if(s.accessToken)state.accessToken=s.accessToken;
+  if(s.clientId)state.clientId=s.clientId;
+  if(s.clientSecret)state.clientSecret=s.clientSecret;
+  if(s.maxHR)state.maxHR=s.maxHR;
+  if(s.zones)state.zones=s.zones;
+  if(s.activities?.length){
+    state.activities=s.activities;
+    // Ensure rideType is set for all activities (backfill if missing)
+    state.activities.forEach(a=>{
+      if(!a.rideType) a.rideType=a.zones?classifyRide(a.zones.pct):null;
+    });
+  }
+  if(s.athlete)state.athlete=s.athlete;
+}
+
+// ─── ZONE MATH ────────────────────────────────────────────────────────────────
+function getBpmRanges(maxHR,zones){
+  const r=zones.map(z=>({key:z.key,lo:Math.round(maxHR*z.pctMin/100),hi:z.pctMax>=100?999:Math.round(maxHR*z.pctMax/100)}));
+  for(let i=1;i<r.length;i++) if(r[i].lo>r[i-1].hi+1) r[i].lo=r[i-1].hi+1;
+  return r;
+}
+function getZoneForBpm(bpm,ranges){
+  for(const r of ranges) if(bpm>=r.lo&&bpm<=r.hi) return r.key;
+  if(bpm<ranges[0].lo)return ranges[0].key;
+  return ranges[ranges.length-1].key;
+}
+
+// Haversine distance in metres between two [lat,lng] points
+function haversine(p1,p2){
+  const R=6371000,toRad=x=>x*Math.PI/180;
+  const dLat=toRad(p2[0]-p1[0]),dLng=toRad(p2[1]-p1[1]);
+  const a=Math.sin(dLat/2)**2+Math.cos(toRad(p1[0]))*Math.cos(toRad(p2[0]))*Math.sin(dLng/2)**2;
+  return R*2*Math.atan2(Math.sqrt(a),Math.sqrt(1-a));
+}
+
+// ── Douglas-Peucker on altitude profile ──────────────────────────────────────
+// Returns array of original indices that DP keeps
+function dpAlt(altArr,start,end,tol,kept){
+  if(end<=start+1){return;}
+  let maxDist=0,maxIdx=start+1;
+  const a=altArr[start],b=altArr[end];
+  for(let i=start+1;i<end;i++){
+    // Perpendicular distance from point i to line start-end (altitude only, index as x)
+    const t=(i-start)/(end-start);
+    const proj=a+(b-a)*t;
+    const dist=Math.abs(altArr[i]-proj);
+    if(dist>maxDist){maxDist=dist;maxIdx=i;}
+  }
+  if(maxDist>tol){
+    dpAlt(altArr,start,maxIdx,tol,kept);
+    kept.push(maxIdx);
+    dpAlt(altArr,maxIdx,end,tol,kept);
+  }
+}
+
+function simplifyAlt(altArr,tol){
+  if(!altArr||altArr.length<3)return altArr.map((_,i)=>i);
+  const kept=[0];
+  dpAlt(altArr,0,altArr.length-1,tol,kept);
+  kept.push(altArr.length-1);
+  kept.sort((a,b)=>a-b);
+  return kept;
+}
+
+// Pre-smooth altitude with short moving average to reduce barometer noise
+function preSmoothAlt(altArr,win){
+  const n=altArr.length,out=new Float32Array(n);
+  for(let i=0;i<n;i++){
+    let s=0,c=0;
+    for(let j=Math.max(0,i-win+1);j<=i;j++){s+=altArr[j];c++;}
+    out[i]=s/c;
+  }
+  return out;
+}
+
+function calcZones(hrArr,timeArr,altArr,latlngArr,maxHR,zones){
+  if(!hrArr||!timeArr||hrArr.length<2)return null;
+  const ranges=getBpmRanges(maxHR,zones);
+  const secs=Object.fromEntries(ZKEYS.map(k=>[k,0]));
+
+  // ── HR zone accounting + TRIMP (raw 1-second data) ──
+  let trimpBanister=0;
+  for(let i=1;i<hrArr.length;i++){
+    const dt=timeArr[i]-timeArr[i-1];
+    if(dt<=0||dt>30)continue;
+    const hr=(hrArr[i]+hrArr[i-1])/2;
+    secs[getZoneForBpm(Math.round(hr),ranges)]+=dt;
+    // Banister TRIMP
+    const hrRatio=(hr-HR_REST)/(HR_MAX-HR_REST);
+    if(hrRatio>0) trimpBanister+=(dt/60)*hrRatio*Math.exp(1.92*hrRatio);
+  }
+  const total=ZKEYS.reduce((s,k)=>s+secs[k],0);
+  const pct=Object.fromEntries(ZKEYS.map(k=>[k,total>0?secs[k]/total*100:0]));
+
+
+  // ── VAM / CEI via DP pipeline ──
+  // Accumulators: _t = total (>=3%), _c = climb (>=5%)
+  let sumDh_t=0,sumHR_t=0,hrCnt_t=0,climbSecs_t=0;
+  let sumDh_c=0,sumHR_c=0,hrCnt_c=0,climbSecs_c=0;
+
+  if(altArr&&latlngArr&&altArr.length===hrArr.length&&latlngArr.length===hrArr.length){
+    // Step 1: pre-smooth altitude
+    const smoothAlt=preSmoothAlt(altArr,PRE_SMOOTH_WIN);
+
+    // Step 2: Douglas-Peucker simplification
+    const dpIdx=simplifyAlt(Array.from(smoothAlt),DP_TOLERANCE);
+
+    // Step 3: compute slope + accumulate on DP segments
+    for(let k=1;k<dpIdx.length;k++){
+      const i=dpIdx[k],j=dpIdx[k-1];
+      const dh=smoothAlt[i]-smoothAlt[j];
+      if(dh<=0)continue; // only climbing segments
+
+      const d=haversine(latlngArr[j],latlngArr[i]);
+      if(d<0.5)continue;
+
+      const slope=(dh/d)*100;
+      // Real time difference between original indices (not fixed interval)
+      const dt=timeArr[i]-timeArr[j];
+      if(dt<=0||dt>300)continue; // skip gaps > 5 min
+
+      // Arithmetic mean HR over this DP segment from original data
+      let hrSum=0,hrCnt=0;
+      for(let m=j+1;m<=i;m++){
+        if(hrArr[m]>0){hrSum+=hrArr[m];hrCnt++;}
+      }
+      if(hrCnt===0)continue;
+      const segAvgHR=hrSum/hrCnt;
+
+      if(slope>=MIN_SLOPE_TOTAL){
+        sumDh_t+=dh;
+        sumHR_t+=segAvgHR;
+        hrCnt_t++;
+        climbSecs_t+=dt;
+      }
+      if(slope>=MIN_SLOPE_CLIMB){
+        sumDh_c+=dh;
+        sumHR_c+=segAvgHR;
+        hrCnt_c++;
+        climbSecs_c+=dt;
+      }
+    }
+  }
+
+  // VAM = m/h, avgHR = arithmetic mean of per-segment averages
+  const vamTotal=climbSecs_t>0?Math.round(sumDh_t/(climbSecs_t/3600)):null;
+  const avgHR_t=hrCnt_t>0?Math.round(sumHR_t/hrCnt_t):null;
+  const ceiTotal=(vamTotal&&avgHR_t)?( vamTotal/avgHR_t).toFixed(2):null;
+
+  const vamClimb=climbSecs_c>0?Math.round(sumDh_c/(climbSecs_c/3600)):null;
+  const avgHR_c=hrCnt_c>0?Math.round(sumHR_c/hrCnt_c):null;
+  const ceiClimb=(vamClimb&&avgHR_c)?(vamClimb/avgHR_c).toFixed(2):null;
+
+  // ── VAM2 / CEI2 new pipeline ──
+  let vam2Res=null;
+  if(altArr&&latlngArr&&altArr.length===hrArr.length&&latlngArr.length===hrArr.length){
+    vam2Res=calcVam2(hrArr,timeArr,altArr,latlngArr);
+  }
+
+  return{
+    secs,pct,total,
+    climbMeters:Math.round(sumDh_c), avgHR_c,
+    vam:vamClimb, cei:ceiClimb,
+    trimpBanister:Math.round(trimpBanister),
+    vam2:vam2Res?.vam2??null,
+    cei2:vam2Res?.cei2??null,
+    climbMeters2:vam2Res?.climbMeters2??null,
+    avgHR2:vam2Res?.avgHR2??null,
+  };
+}
+
+// ─── VAM2 / CEI2 – New pipeline ──────────────────────────────────────────────
+const GRAD_THRESHOLD=4.0;    // % minimum slope
+const SMOOTH_WIN_M=30;       // metres for gradient window
+const MIN_SEG_LEN=100;       // minimum segment length (m)
+const MIN_SEG_DH=10;         // minimum segment elevation gain (m)
+
+
+function buildRawSegments(hrArr,timeArr,smoothAlt,cumDist,grad,n){
+  // Phase 1: collect raw segments (consecutive points with grad >= threshold)
+  const segs=[];
+  let inSeg=false,s={};
+  const flush=()=>{
+    if(!inSeg) return;
+    segs.push({...s});
+    inSeg=false;
+  };
+  for(let i=1;i<n;i++){
+    const dt=timeArr[i]-timeArr[i-1];
+    if(dt<=0||dt>30){flush();continue;}
+    const dh=smoothAlt[i]-smoothAlt[i-1];
+    const dd=cumDist[i]-cumDist[i-1];
+    if(grad[i]>=GRAD_THRESHOLD&&dh>0){
+      if(!inSeg){
+        inSeg=true;
+        s={startIdx:i,endIdx:i,dh:0,dist:0,time:0,hrSum:0,hrCnt:0,endDist:cumDist[i]};
+      }
+      s.endIdx=i; s.dh+=dh; s.dist+=dd; s.time+=dt;
+      s.endDist=cumDist[i];
+      if(hrArr[i]>0){s.hrSum+=hrArr[i];s.hrCnt++;}
+    }else{flush();}
+  }
+  flush();
+
+  return segs;
+}
+
+function calcVam2(hrArr,timeArr,altArr,latlngArr){
+  if(!altArr||!latlngArr||!hrArr||altArr.length<2) return null;
+  const n=altArr.length;
+  const smoothAlt=preSmoothAlt(altArr,PRE_SMOOTH_WIN);
+  const cumDist=new Float64Array(n);
+  for(let i=1;i<n;i++) cumDist[i]=cumDist[i-1]+haversine(latlngArr[i-1],latlngArr[i]);
+  const grad=new Float32Array(n);
+  for(let i=1;i<n;i++){
+    let j=i-1;
+    while(j>0&&(cumDist[i]-cumDist[j])<SMOOTH_WIN_M) j--;
+    const dDist=cumDist[i]-cumDist[j];
+    const dAlt=smoothAlt[i]-smoothAlt[j];
+    grad[i]=dDist>0.5?(dAlt/dDist)*100:0;
+  }
+
+  const segs=buildRawSegments(hrArr,timeArr,smoothAlt,cumDist,grad,n);
+
+  // Phase 3: apply filter and accumulate
+  let sumDh=0,sumTime=0,sumHR=0,hrCnt=0,segCount2=0;
+  for(const s of segs){
+    if(s.dist>=MIN_SEG_LEN||s.dh>=MIN_SEG_DH){
+      sumDh+=s.dh; sumTime+=s.time;
+      sumHR+=s.hrSum; hrCnt+=s.hrCnt;
+      segCount2++;
+    }
+  }
+
+  const vam2=sumTime>0?Math.round(sumDh/(sumTime/3600)):null;
+  const avgHR=hrCnt>0?Math.round(sumHR/hrCnt):null;
+  const cei2=(vam2&&avgHR)?(vam2/avgHR).toFixed(2):null;
+  return{vam2,cei2,climbMeters2:Math.round(sumDh),avgHR2:avgHR,segCount2};
+}
+
+// Returns per-point CEI2 values for elevation chart coloring
+function buildPointCei2(hrArr,timeArr,altArr,latlngArr){
+  if(!altArr||!latlngArr) return null;
+  const n=altArr.length;
+  const smoothAlt=preSmoothAlt(altArr,PRE_SMOOTH_WIN);
+  const cumDist=new Float64Array(n);
+  for(let i=1;i<n;i++) cumDist[i]=cumDist[i-1]+haversine(latlngArr[i-1],latlngArr[i]);
+  const grad=new Float32Array(n);
+  for(let i=1;i<n;i++){
+    let j=i-1;
+    while(j>0&&(cumDist[i]-cumDist[j])<SMOOTH_WIN_M) j--;
+    const dDist=cumDist[i]-cumDist[j];
+    const dAlt=smoothAlt[i]-smoothAlt[j];
+    grad[i]=dDist>0.5?(dAlt/dDist)*100:0;
+  }
+
+  // Build segments, compute CEI per segment, assign to points
+  const ceiArr=new Array(n).fill(null);
+  let inSeg=false,segStart=0,segDh=0,segDist=0,segTime=0,segHRSum=0,segHRCnt=0;
+
+  const flushSeg2=(end)=>{
+    if(!inSeg) return;
+    if(segDist>=MIN_SEG_LEN||segDh>=MIN_SEG_DH){
+      const segVam=segTime>0?segDh/(segTime/3600):0;
+      const segHR=segHRCnt>0?segHRSum/segHRCnt:0;
+      const segCei=segHR>0?segVam/segHR:null;
+      if(segCei!=null) for(let m=segStart;m<=end;m++) ceiArr[m]=segCei;
+    }
+    inSeg=false;segDh=0;segDist=0;segTime=0;segHRSum=0;segHRCnt=0;
+  };
+
+  for(let i=1;i<n;i++){
+    const dt=timeArr[i]-timeArr[i-1];
+    if(dt<=0||dt>30){flushSeg2(i-1);continue;}
+    const dh=smoothAlt[i]-smoothAlt[i-1];
+    const dd=cumDist[i]-cumDist[i-1];
+    if(grad[i]>=GRAD_THRESHOLD&&dh>0){
+      if(!inSeg){inSeg=true;segStart=i;}
+      segDh+=dh;segDist+=dd;segTime+=dt;
+      if(hrArr[i]>0){segHRSum+=hrArr[i];segHRCnt++;}
+    }else{flushSeg2(i-1);}
+  }
+  flushSeg2(n-1);
+  return ceiArr;
+}
+
+// ─── POLYLINE DECODER ─────────────────────────────────────────────────────────
+function decodePolyline(str){
+  let idx=0,lat=0,lng=0;const coords=[];
+  while(idx<str.length){
+    let b,shift=0,result=0;
+    do{b=str.charCodeAt(idx++)-63;result|=(b&0x1f)<<shift;shift+=5}while(b>=0x20);
+    lat+=(result&1)?~(result>>1):(result>>1);shift=0;result=0;
+    do{b=str.charCodeAt(idx++)-63;result|=(b&0x1f)<<shift;shift+=5}while(b>=0x20);
+    lng+=(result&1)?~(result>>1):(result>>1);
+    coords.push([lat/1e5,lng/1e5]);
+  }
+  return coords;
+}
+
+// ─── INIT ─────────────────────────────────────────────────────────────────────
+let leafletMap=null,routeLayer=null;
+
+window.addEventListener('DOMContentLoaded',async()=>{
+  await openDB();await loadMeta();
+  buildZoneTable('setup-zones-tbody','setup-maxhr');
+  initSliders();
+  const code=new URLSearchParams(window.location.search).get('code');
+  if(code&&state.clientId&&state.clientSecret){
+    window.history.replaceState({},'',window.location.pathname);
+    await exchangeCode(code);return;
+  }
+  if(state.accessToken){await initApp();return;}
+  showSetup();
+});
+
+// ─── SLIDERS ──────────────────────────────────────────────────────────────────
+function initSliders(){
+  updateSliderLabels();
+}
+function onSlider(){
+  state.slDist=[+document.getElementById('sl-dist-min').value,+document.getElementById('sl-dist-max').value];
+  state.slTime=[+document.getElementById('sl-time-min').value,+document.getElementById('sl-time-max').value];
+  state.slElev=[+document.getElementById('sl-elev-min').value,+document.getElementById('sl-elev-max').value];
+  // Ensure min <= max
+  if(state.slDist[0]>state.slDist[1]){const t=state.slDist[0];state.slDist[0]=state.slDist[1];state.slDist[1]=t;}
+  if(state.slTime[0]>state.slTime[1]){const t=state.slTime[0];state.slTime[0]=state.slTime[1];state.slTime[1]=t;}
+  if(state.slElev[0]>state.slElev[1]){const t=state.slElev[0];state.slElev[0]=state.slElev[1];state.slElev[1]=t;}
+  updateSliderLabels();
+  state.page=0;renderAll();
+}
+function updateSliderLabels(){
+  const dMin=+document.getElementById('sl-dist-min').value,dMax=+document.getElementById('sl-dist-max').value;
+  const tMin=+document.getElementById('sl-time-min').value,tMax=+document.getElementById('sl-time-max').value;
+  const eMin=+document.getElementById('sl-elev-min').value,eMax=+document.getElementById('sl-elev-max').value;
+  document.getElementById('sl-dist-val').textContent=`${dMin}–${dMax===200?'200+':dMax}`;
+  document.getElementById('sl-time-val').textContent=`${tMin}–${tMax===12?'12+':tMax}h`;
+  document.getElementById('sl-elev-val').textContent=`${eMin}–${eMax===3000?'3000+':eMax}m`;
+}
+
+// ─── ZONE TABLE ───────────────────────────────────────────────────────────────
+function buildZoneTable(tbodyId,maxhrId){
+  const el=document.getElementById(maxhrId);
+  if(el){el.value=state.maxHR;el.oninput=()=>updateBpmPreviews(tbodyId,maxhrId);}
+  const tbody=document.getElementById(tbodyId);tbody.innerHTML='';
+  ZONE_DEFS.forEach((def,i)=>{
+    const z=state.zones[i];
+    const lo=Math.round(state.maxHR*z.pctMin/100),hi=z.pctMax>=100?'∞':Math.round(state.maxHR*z.pctMax/100);
+    const tr=document.createElement('tr');
+    tr.innerHTML=`<td class="zone-name-cell"><span class="zone-dot" style="background:${def.color}"></span>${def.label}</td>
+      <td><input type="number" id="${tbodyId}-${def.key}-min" value="${z.pctMin}" min="0" max="100" oninput="updateBpmPreviews('${tbodyId}','${maxhrId}')"></td>
+      <td><input type="number" id="${tbodyId}-${def.key}-max" value="${z.pctMax}" min="0" max="100" oninput="updateBpmPreviews('${tbodyId}','${maxhrId}')"></td>
+      <td class="bpm-preview" id="${tbodyId}-${def.key}-bpm">${lo}–${hi}</td>`;
+    tbody.appendChild(tr);
+  });
+}
+function updateBpmPreviews(tbodyId,maxhrId){
+  const maxHR=parseInt(document.getElementById(maxhrId).value)||190;
+  ZONE_DEFS.forEach(def=>{
+    const pMin=parseInt(document.getElementById(`${tbodyId}-${def.key}-min`).value)||0;
+    const pMax=parseInt(document.getElementById(`${tbodyId}-${def.key}-max`).value)||100;
+    document.getElementById(`${tbodyId}-${def.key}-bpm`).textContent=`${Math.round(maxHR*pMin/100)}–${pMax>=100?'∞':Math.round(maxHR*pMax/100)}`;
+  });
+}
+function readZonesFromTable(tbodyId,maxhrId){
+  return{
+    maxHR:parseInt(document.getElementById(maxhrId).value)||190,
+    zones:ZONE_DEFS.map(def=>({key:def.key,
+      pctMin:parseInt(document.getElementById(`${tbodyId}-${def.key}-min`).value)||0,
+      pctMax:parseInt(document.getElementById(`${tbodyId}-${def.key}-max`).value)||100,
+    })),
+  };
+}
+
+// ─── AUTH ─────────────────────────────────────────────────────────────────────
+function showSetup(){document.getElementById('setup-screen').style.display='block';document.getElementById('app-screen').style.display='none';}
+function showApp(){document.getElementById('setup-screen').style.display='none';document.getElementById('app-screen').style.display='block';}
+
+function startOAuth(){
+  const clientId=document.getElementById('client-id').value.trim();
+  const clientSecret=document.getElementById('client-secret').value.trim();
+  if(!clientId||!clientSecret){toast('Zadaj Client ID a Client Secret');return;}
+  const{maxHR,zones}=readZonesFromTable('setup-zones-tbody','setup-maxhr');
+  state.clientId=clientId;state.clientSecret=clientSecret;state.maxHR=maxHR;state.zones=zones;
+  saveMeta();
+  const redirect=window.location.origin+window.location.pathname;
+  window.location.href=`https://www.strava.com/oauth/authorize?client_id=${clientId}&redirect_uri=${encodeURIComponent(redirect)}&response_type=code&approval_prompt=auto&scope=activity:read_all`;
+}
+async function exchangeCode(code){
+  try{
+    const res=await fetch('https://www.strava.com/oauth/token',{method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({client_id:state.clientId,client_secret:state.clientSecret,code,grant_type:'authorization_code'})});
+    const data=await res.json();
+    if(data.access_token){state.accessToken=data.access_token;state.athlete=data.athlete;await saveMeta();await initApp();}
+    else{toast('OAuth chyba: '+(data.message||JSON.stringify(data)));showSetup();}
+  }catch(e){toast('Chyba pri prihlásení');showSetup();}
+}
+function logout(){indexedDB.deleteDatabase('mtbzones_v5');location.reload();}
+
+// ─── APP ──────────────────────────────────────────────────────────────────────
+async function initApp(){
+  showApp();
+  if(state.athlete){
+    document.getElementById('athlete-avatar').src=state.athlete.profile_medium||'';
+    document.getElementById('athlete-name').textContent=`${state.athlete.firstname} ${state.athlete.lastname}`;
+    document.getElementById('athlete-sub').textContent=state.athlete.city||'Strava';
+  }
+  const now=new Date();
+  state.dateFrom=`${now.getFullYear()}-01-01`;
+  state.dateTo=now.toISOString().slice(0,10);
+  document.getElementById('date-from').value=state.dateFrom;
+  document.getElementById('date-to').value=state.dateTo;
+  renderSummary();
+  if(state.activities.length>0){renderTable();fetchNewActivities();}
+  else await fetchAllActivities();
+}
+
+// ─── STRAVA API ───────────────────────────────────────────────────────────────
+async function stravaGet(path){
+  const res=await fetch(`https://www.strava.com${path}`,{headers:{Authorization:`Bearer ${state.accessToken}`}});
+  if(res.status===401){logout();throw new Error('Unauthorized');}
+  if(res.status===429)throw new Error('RATE_LIMIT');
+  if(!res.ok)throw new Error(`HTTP ${res.status}`);
+  return res.json();
+}
+async function handleRateLimit(){
+  document.getElementById('rate-warn').style.display='block';
+  logProgress('Rate limit – čaká sa 15 min...');
+  await sleep(15*60*1000);
+  document.getElementById('rate-warn').style.display='none';
+}
+
+async function fetchAllActivities(){
+  const section=document.getElementById('progress-section');
+  section.style.display='block';logProgress('Načítavam zoznam aktivít...');
+  let all=[],page=1;
+  while(true){
+    try{
+      const batch=await stravaGet(`/api/v3/athlete/activities?per_page=100&page=${page}`);
+      if(!batch.length)break;all=all.concat(batch);
+      logProgress(`Načítaných ${all.length} aktivít...`);page++;
+    }catch(e){if(e.message==='RATE_LIMIT'){await handleRateLimit();continue;}break;}
+  }
+  const withHR=all.filter(a=>a.has_heartrate);
+  all.filter(a=>!a.has_heartrate).forEach(a=>{if(!state.activities.find(x=>x.id===a.id))state.activities.push(makeActivity(a,null));});
+  setProgress(0,withHR.length);
+  logProgress(`Sťahujem streamy pre ${withHR.length} aktivít...`);
+  for(let i=0;i<withHR.length;i++){
+    const a=withHR[i];
+    if(state.activities.find(x=>x.id===a.id)){setProgress(i+1,withHR.length);continue;}
+    try{
+      const s=await stravaGet(`/api/v3/activities/${a.id}/streams?keys=heartrate,time,altitude,latlng&key_by_type=true`);
+      const hr=s?.heartrate?.data,time=s?.time?.data,alt=s?.altitude?.data,ll=s?.latlng?.data;
+      if(hr&&time)await dbPut('streams',{id:a.id,hr,time,alt:alt||null,ll:ll||null});
+      state.activities.push(makeActivity(a,calcZones(hr,time,alt,ll,state.maxHR,state.zones)));
+      setProgress(i+1,withHR.length);logProgress(`✓ ${a.name}`);
+      if(i%10===0){await saveMeta();renderAll();}
+    }catch(e){
+      if(e.message==='RATE_LIMIT'){await saveMeta();renderAll();await handleRateLimit();i--;continue;}
+      logProgress(`✗ ${a.name}`);
+    }
+  }
+  await saveMeta();renderAll();section.style.display='none';toast('Načítanie dokončené');
+}
+
+async function fetchNewActivities(){
+  if(!state.activities.length)return;
+  const latest=state.activities.reduce((a,b)=>a.date>b.date?a:b);
+  const after=Math.floor(new Date(latest.date).getTime()/1000);
+  let newOnes=[];
+  try{newOnes=await stravaGet(`/api/v3/athlete/activities?per_page=50&after=${after}`);}catch(e){return;}
+  if(!newOnes.length)return;
+  const section=document.getElementById('progress-section');
+  section.style.display='block';logProgress(`Nové aktivity: ${newOnes.length}`);
+  for(const a of newOnes){
+    if(state.activities.find(x=>x.id===a.id))continue;
+    if(a.has_heartrate){
+      try{
+        const s=await stravaGet(`/api/v3/activities/${a.id}/streams?keys=heartrate,time,altitude,latlng&key_by_type=true`);
+        const hr=s?.heartrate?.data,time=s?.time?.data,alt=s?.altitude?.data,ll=s?.latlng?.data;
+        if(hr&&time)await dbPut('streams',{id:a.id,hr,time,alt:alt||null,ll:ll||null});
+        state.activities.push(makeActivity(a,calcZones(hr,time,alt,ll,state.maxHR,state.zones)));
+        logProgress(`✓ ${a.name}`);
+      }catch(e){logProgress(`✗ ${a.name}`);}
+    }else{state.activities.push(makeActivity(a,null));}
+  }
+  await saveMeta();renderAll();section.style.display='none';
+}
+
+function makeActivity(a,zones){
+  const act={id:a.id,name:a.name,type:a.sport_type||a.type,date:a.start_date_local,
+    movingTime:a.moving_time,distance:a.distance||0,avgHR:a.average_heartrate,
+    maxHR:a.max_heartrate,elevation:a.total_elevation_gain||0,
+    polyline:a.map?.summary_polyline||null,hasHR:!!zones,zones};
+  act.rideType=zones?classifyRide(zones.pct):null;
+  return act;
+}
+
+// ─── RECALC ───────────────────────────────────────────────────────────────────
+async function recalcAllZones(){
+  const notice=document.getElementById('recalc-notice');notice.style.display='block';
+  let done=0;
+  for(const a of state.activities){
+    if(!a.hasHR)continue;
+    const raw=await dbGet('streams',a.id);if(!raw)continue;
+    a.zones=calcZones(raw.hr,raw.time,raw.alt||null,raw.ll||null,state.maxHR,state.zones);
+    notice.textContent=`Prepočítavam... ${++done} aktivít`;
+  }
+  notice.style.display='none';await saveMeta();renderAll();toast('Zóny prepočítané');
+}
+
+// ─── ZONE EDITOR ─────────────────────────────────────────────────────────────
+function openZoneEditor(){buildZoneTable('modal-zones-tbody','modal-maxhr');document.getElementById('zone-modal').style.display='flex';}
+function closeZoneEditor(){document.getElementById('zone-modal').style.display='none';}
+async function saveZones(){
+  const{maxHR,zones}=readZonesFromTable('modal-zones-tbody','modal-maxhr');
+  state.maxHR=maxHR;state.zones=zones;closeZoneEditor();await recalcAllZones();
+}
+
+// ─── MAP ──────────────────────────────────────────────────────────────────────
+let currentMapActivity=null;
+let ceiSegmentLayers=[];
+let currentMapMode='normal'; // 'normal' | 'cei'
+const SMOOTH_WIN=PRE_SMOOTH_WIN; // reuse pre-smooth window for map visualization
+
+async function openMap(activity){
+  state.openActivityId=activity.id;
+  currentMapActivity=activity;
+  currentMapMode='normal';
+  const panel=document.getElementById('map-panel');panel.style.display='block';
+  document.getElementById('map-title').textContent=activity.name;
+  buildMapMeta(activity);
+  setToggleUI('normal');
+  panel.scrollIntoView({behavior:'smooth',block:'start'});
+  if(!leafletMap){
+    leafletMap=L.map('activity-map',{zoomControl:true});
+  }
+  // Pre-fetch raw stream so chart is ready immediately
+  elevRaw=null;
+  try{elevRaw=await dbGet('streams',activity.id);}catch(e){}
+  await drawNormalRoute(activity);
+  // Show chart container immediately so canvas has dimensions
+  const chartContainer=document.getElementById('elev-chart-container');
+  chartContainer.style.display='block';
+  leafletMap&&leafletMap.invalidateSize();
+  initCrosshairMarker();
+  // Wait for map panel to be fully rendered, then build chart
+  await new Promise(r=>setTimeout(r,350));
+  await buildElevChart(activity,'normal');
+  updateElevLegend('normal');
+  renderTable();
+}
+
+function buildProgressBar(pct, color){
+  // Bar stretches full width of the number+delta row above it
+  return `<div style="display:flex;align-items:center;justify-content:space-between;margin-top:4px;width:100%">
+    <div style="flex:1;height:6px;background:rgba(255,255,255,0.1);border-radius:3px;overflow:hidden;margin-right:6px">
+      <div style="width:${pct}%;height:100%;border-radius:3px;background:linear-gradient(90deg,${color}55,${color})"></div>
+    </div>
+    <span style="font-family:'IBM Plex Mono',monospace;font-size:.72rem;color:${color};flex-shrink:0">P${pct}</span>
+  </div>`;
+}
+
+function buildMapMeta(activity){
+  const meta=document.getElementById('map-meta');
+  const z=activity.zones;
+  const badge=getCeiBadge(activity);
+
+  // ── CEI ───────────────────────────────────────────────────────────────────
+  let ceiPct=null, ceiColor='var(--accent)', ceiDiffHtml='', ceiBarHtml='';
+  if(z?.cei2!=null){
+    const peers=getPeers(activity,'cei2');
+    if(peers.length>=PEERS_COUNT){
+      const vals=peers.map(a=>parseFloat(a.zones.cei2)).sort((a,b)=>a-b);
+      const rank=vals.filter(v=>v<parseFloat(z.cei2)).length;
+      ceiPct=Math.round(rank/vals.length*100);
+      const avgCei=vals.reduce((s,v)=>s+v,0)/vals.length;
+      const diff=Math.round((parseFloat(z.cei2)-avgCei)/avgCei*100);
+      const sign=diff>=0?'+':'';
+      if(ceiPct>=70) ceiColor='#16a34a';
+      else if(ceiPct<30) ceiColor='#dc2626';
+      else ceiColor='#ca8a04';
+      ceiDiffHtml=`<span style="font-family:'IBM Plex Mono',monospace;font-size:.78rem;color:${ceiColor};margin-left:16px">Δ${sign}${diff}%</span>`;
+      ceiBarHtml=buildProgressBar(ceiPct, ceiColor);
+    }
+  }
+
+  // ── VAM ───────────────────────────────────────────────────────────────────
+  let vamPct=null, vamColor='var(--accent)', vamDiffHtml='', vamBarHtml='';
+  if(z?.vam2!=null){
+    const peers=getPeers(activity,'vam2');
+    if(peers.length>=PEERS_COUNT){
+      const vals=peers.map(a=>a.zones.vam2||0).sort((a,b)=>a-b);
+      const rank=vals.filter(v=>v<z.vam2).length;
+      vamPct=Math.round(rank/vals.length*100);
+      const avgVam=vals.reduce((s,v)=>s+v,0)/vals.length;
+      const diff=Math.round((z.vam2-avgVam)/avgVam*100);
+      const sign=diff>=0?'+':'';
+      if(vamPct>=70) vamColor='#16a34a';
+      else if(vamPct<30) vamColor='#dc2626';
+      else vamColor='#ca8a04';
+      vamDiffHtml=`<span style="font-family:'IBM Plex Mono',monospace;font-size:.78rem;color:${vamColor};margin-left:16px">Δ${sign}${diff}%</span>`;
+      vamBarHtml=buildProgressBar(vamPct, vamColor);
+    }
+  }
+
+  // ── TRIMP (normalized per hour) ──────────────────────────────────────────
+  let trimpPct=null, trimpColor='#a78bfa', trimpDiffHtml='', trimpBarHtml='';
+  if(z?.trimpBanister!=null && activity.movingTime>0){
+    const trimpPerHour=z.trimpBanister/(activity.movingTime/3600);
+    const trimpPeers=getPeers(activity,'trimpBanister').filter(a=>a.movingTime>0);
+    if(trimpPeers.length>=PEERS_COUNT){
+      const vals=trimpPeers.map(a=>(a.zones.trimpBanister||0)/(a.movingTime/3600)).sort((a,b)=>a-b);
+      const rank=vals.filter(v=>v<trimpPerHour).length;
+      trimpPct=Math.round(rank/vals.length*100);
+      const avgTrimp=vals.reduce((s,v)=>s+v,0)/vals.length;
+      const diff=Math.round((trimpPerHour-avgTrimp)/avgTrimp*100);
+      const sign=diff>=0?'+':'';
+      const rType=activity.rideType;
+      if(rType==='INTERVAL'){
+        if(trimpPct>=70)       trimpColor='#16a34a'; // zelená
+        else if(trimpPct<30)   trimpColor='#dc2626'; // červená
+        else                   trimpColor='#ca8a04'; // žltá
+      }else if(rType==='Z2 ENDURANCE'){
+        if(trimpPct>=70)       trimpColor='#dc2626'; // červená – prepálenie
+        else if(trimpPct<30)   trimpColor='#ca8a04'; // žltá – nie ideálne
+        else                   trimpColor='#16a34a'; // zelená – disciplína
+      }else{
+        // TEMPO / MIX: bez červenej
+        if(trimpPct>=31&&trimpPct<=69) trimpColor='#16a34a'; // zelená – ideál
+        else                           trimpColor='#ca8a04'; // žltá
+      }
+      trimpDiffHtml=`<span style="font-family:'IBM Plex Mono',monospace;font-size:.78rem;color:${trimpColor};margin-left:16px">Δ${sign}${diff}%</span>`;
+      trimpBarHtml=buildProgressBar(trimpPct, trimpColor);
+    }
+  }
+
+  meta.innerHTML=`
+    <div class="map-meta-row map-meta-row-1">
+      <div class="map-meta-item"><span class="map-meta-label">Dátum</span><span class="map-meta-val">${new Date(activity.date).toLocaleDateString('sk-SK')}</span></div>
+      ${activity.rideType?`<div class="map-meta-item"><span class="map-meta-label">Typ jazdy</span><span class="map-meta-val" style="color:${RIDE_TYPE_COLORS[activity.rideType]||'#666'}">${activity.rideType}</span></div>`:''}
+      <div class="map-meta-item"><span class="map-meta-label">Trvanie</span><span class="map-meta-val">${fmtTime(activity.movingTime)}</span></div>
+      <div class="map-meta-item"><span class="map-meta-label">Vzdialenosť</span><span class="map-meta-val">${(activity.distance/1000).toFixed(1).replace('.',',')} km</span></div>
+      <div class="map-meta-item"><span class="map-meta-label">Nastúpané</span><span class="map-meta-val">${Math.round(activity.elevation)} m</span></div>
+      <div class="map-meta-item"><span class="map-meta-label">Avg / Max HR</span><span class="map-meta-val">${(()=>{
+        const ranges=getBpmRanges(state.maxHR,state.zones);
+        const zColors={z1:'#2563eb',z2:'#16a34a',z3:'#ca8a04',z4:'#ea580c',z5:'#dc2626'};
+        const avgC=activity.avgHR?zColors[getZoneForBpm(Math.round(activity.avgHR),ranges)]||'var(--text)':'var(--muted)';
+        const maxC=activity.maxHR?zColors[getZoneForBpm(Math.round(activity.maxHR),ranges)]||'var(--text)':'var(--muted)';
+        const avg=activity.avgHR?`<span style="color:${avgC}">${Math.round(activity.avgHR)} bpm</span>`:'–';
+        const max=activity.maxHR?`<span style="color:${maxC}">${Math.round(activity.maxHR)} bpm</span>`:'–';
+        return avg+' / '+max;
+      })()}</span></div>
+    </div>
+    <div class="map-meta-row map-meta-row-2">
+      ${z?.cei2!=null?`<div class="map-meta-item">
+        <span class="map-meta-label">CEI</span>
+        <div style="display:flex;align-items:baseline">
+          <span style="font-size:1.4rem;font-weight:700;color:${ceiColor};line-height:1">${fmtDec(z.cei2)}</span>
+          ${ceiDiffHtml}
+        </div>
+        ${ceiBarHtml}
+      </div>`:''}
+      ${z?.vam2!=null?`<div class="map-meta-item">
+        <span class="map-meta-label">VAM</span>
+        <div style="display:flex;align-items:baseline">
+          <span style="font-size:1.12rem;font-weight:700;color:${vamColor};line-height:1">${z.vam2}</span>
+          <span style="font-family:'IBM Plex Mono',monospace;font-size:.78rem;color:var(--muted);margin-left:5px">m/h</span>
+          ${vamDiffHtml}
+        </div>
+        ${vamBarHtml}
+      </div>`:''}
+      ${z?.trimpBanister!=null?`<div class="map-meta-item">
+        <span class="map-meta-label">TRIMP</span>
+        <div style="display:flex;align-items:baseline">
+          <span style="font-size:1.12rem;font-weight:700;color:${trimpColor};line-height:1">${z.trimpBanister}</span>
+          ${trimpDiffHtml}
+        </div>
+        ${trimpBarHtml}
+      </div>`:''}
+      ${z?.climbMeters2!=null?`<div class="map-meta-item" style="text-align:center">
+        <span class="map-meta-label">Stúpanie ≥4%</span>
+        <div style="font-size:1rem;font-weight:600;margin-top:4px">${z.climbMeters2} m · ${(()=>{
+          if(!z.avgHR2) return '–';
+          const ranges=getBpmRanges(state.maxHR,state.zones);
+          const zColors={z1:'#2563eb',z2:'#16a34a',z3:'#ca8a04',z4:'#ea580c',z5:'#dc2626'};
+          const c=zColors[getZoneForBpm(z.avgHR2,ranges)]||'var(--text)';
+          return `<span style="color:${c}">${z.avgHR2} bpm</span>`;
+        })()}</div>
+      </div>`:''}
+    </div>
+  `;
+}
+
+function setToggleUI(mode){
+  document.getElementById('toggle-normal').classList.toggle('active', mode==='normal');
+  document.getElementById('toggle-hr').classList.toggle('active', mode==='hr');
+  document.getElementById('toggle-cei').classList.toggle('active', mode==='cei');
+}
+
+async function setMapMode(mode){
+  if(!currentMapActivity)return;
+  currentMapMode=mode;
+  setToggleUI(mode);
+  if(mode==='normal'){
+    drawNormalRoute(currentMapActivity);
+    elevRaw=null;
+    await buildElevChart(currentMapActivity,'normal');
+    return;
+  }
+  let raw=null;
+  try{raw=await dbGet('streams',currentMapActivity.id);}catch(e){}
+  if(!raw){toast('Stream nenájdený v DB – aktivita potrebuje resync');setToggleUI('normal');currentMapMode='normal';return;}
+  if(!raw.ll){toast('Táto aktivita nemá GPS stream');setToggleUI('normal');currentMapMode='normal';return;}
+  if(mode==='hr'){
+    drawHRMap(raw,currentMapActivity.polyline);
+  }else{
+    if(!raw.alt){toast('Chýba altitude stream');setToggleUI('normal');currentMapMode='normal';return;}
+    drawCeiSegments(raw,currentMapActivity.polyline);
+  }
+  elevRaw=raw;
+  await buildElevChart(currentMapActivity,mode);
+  updateElevLegend(mode);
+}
+
+function ensureDarkTiles(){
+  if(leafletMap._voyagerTileLayer){leafletMap.removeLayer(leafletMap._voyagerTileLayer);leafletMap._voyagerTileLayer=null;}
+  if(leafletMap._lightTileLayer){leafletMap.removeLayer(leafletMap._lightTileLayer);leafletMap._lightTileLayer=null;}
+  if(!leafletMap._darkTileLayer){
+    leafletMap._darkTileLayer=L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',{
+      attribution:'© OpenStreetMap © CARTO',maxZoom:19
+    }).addTo(leafletMap);
+  }
+}
+function ensureVoyagerTiles(){
+  if(leafletMap._darkTileLayer){leafletMap.removeLayer(leafletMap._darkTileLayer);leafletMap._darkTileLayer=null;}
+  if(leafletMap._lightTileLayer){leafletMap.removeLayer(leafletMap._lightTileLayer);leafletMap._lightTileLayer=null;}
+  if(!leafletMap._voyagerTileLayer){
+    leafletMap._voyagerTileLayer=L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png',{
+      attribution:'© OpenStreetMap © CARTO',maxZoom:19
+    }).addTo(leafletMap);
+  }
+}
+function ensureLightTiles(){
+  if(leafletMap._darkTileLayer){leafletMap.removeLayer(leafletMap._darkTileLayer);leafletMap._darkTileLayer=null;}
+  if(leafletMap._voyagerTileLayer){leafletMap.removeLayer(leafletMap._voyagerTileLayer);leafletMap._voyagerTileLayer=null;}
+}
+
+async function drawNormalRoute(activity){
+  clearMapLayers();
+  ensureVoyagerTiles();
+  // Use latlng stream for smooth route (more points than summary_polyline)
+  let coords=null;
+  try{
+    const raw=await dbGet('streams',activity.id);
+    if(raw?.ll&&raw.ll.length>2) coords=raw.ll;
+  }catch(e){}
+  // Fallback to summary_polyline
+  if(!coords&&activity.polyline) coords=decodePolyline(activity.polyline);
+  if(coords){
+    routeLayer=L.polyline(coords,{color:'#f97316',weight:3,opacity:.9}).addTo(leafletMap);
+    leafletMap.fitBounds(routeLayer.getBounds(),{padding:[20,20]});
+  }
+}
+
+// Compute smoothed slope array using moving average over SMOOTH_WIN points
+function smoothedSlopes(ll,alt){
+  const n=ll.length;
+  const rawSlope=new Array(n).fill(0);
+  for(let i=1;i<n;i++){
+    const dh=alt[i]-alt[i-1];
+    const d=haversine(ll[i-1],ll[i]);
+    rawSlope[i]=d>0.5?(dh/d)*100:0;
+  }
+  const smoothed=new Array(n).fill(0);
+  for(let i=1;i<n;i++){
+    let sum=0,cnt=0;
+    for(let j=Math.max(1,i-SMOOTH_WIN+1);j<=i;j++){sum+=rawSlope[j];cnt++;}
+    smoothed[i]=sum/cnt;
+  }
+  return smoothed;
+}
+
+// Get zone color for a given HR value
+function hrZoneColor(bpm){
+  const ranges=getBpmRanges(state.maxHR,state.zones);
+  const zone=getZoneForBpm(Math.round(bpm),ranges);
+  if(zone==='z1'||zone==='z2') return '#16a34a'; // green
+  if(zone==='z3') return '#ca8a04';               // orange
+  return '#dc2626';                                // red Z4/Z5
+}
+
+// Zone colors matching UI
+const ZONE_COLORS={z1:'#2563eb',z2:'#16a34a',z3:'#ca8a04',z4:'#ea580c',z5:'#dc2626'};
+
+function drawHRMap(raw,polyline){
+  clearMapLayers();
+  const ll=raw.ll,hr=raw.hr;
+  if(!ll||ll.length<2)return;
+
+  // Switch to light tile layer for HR map
+  ensureVoyagerTiles();
+
+  const ranges=getBpmRanges(state.maxHR,state.zones);
+
+  // Group consecutive same-zone points into polyline segments
+  let segCoords=[],segZone=null;
+  let segLayers=[];
+
+  const flushSeg=()=>{
+    if(segCoords.length>=2&&segZone){
+      const col=ZONE_COLORS[segZone]||'#888';
+      const seg=L.polyline(segCoords,{color:col,weight:4,opacity:.9}).addTo(leafletMap);
+      ceiSegmentLayers.push(seg);
+    }
+    segCoords=[];segZone=null;
+  };
+
+  for(let i=0;i<ll.length;i++){
+    const bpm=hr?hr[i]:0;
+    const zone=bpm>0?getZoneForBpm(Math.round(bpm),ranges):null;
+    if(!zone){flushSeg();continue;}
+    if(zone!==segZone){flushSeg();segCoords=[ll[i]];segZone=zone;}
+    else segCoords.push(ll[i]);
+  }
+  flushSeg();
+
+  // Fit bounds using polyline
+  if(polyline){
+    const coords=decodePolyline(polyline);
+    leafletMap.fitBounds(L.polyline(coords).getBounds(),{padding:[20,20]});
+  }
+}
+
+function ceiSegmentColor(cei, rideType){
+  if(cei==null) return '#555';
+  // Use percentile vs peers if available
+  if(rideType&&state?.activities){
+    const peers=state.activities
+      .filter(a=>a.hasHR&&a.zones?.cei2!=null&&a.rideType===rideType)
+      .map(a=>parseFloat(a.zones.cei2)).sort((a,b)=>a-b);
+    if(peers.length>=PEERS_COUNT){
+      const rank=peers.filter(v=>v<cei).length;
+      const pct=Math.round(rank/peers.length*100);
+      if(pct>=70) return '#16a34a';  // green
+      if(pct<30)  return '#dc2626';  // red
+      return '#ca8a04';              // yellow
+    }
+  }
+  // Fallback: absolute thresholds
+  if(cei>4.2)  return '#16a34a';
+  if(cei>=3.6) return '#ca8a04';
+  return '#dc2626';
+}
+
+function drawCeiSegments(raw,polyline){
+  clearMapLayers();
+  ensureDarkTiles();
+  // Grey full route as background layer
+  if(raw?.ll&&raw.ll.length>2){
+    const bgRoute=L.polyline(raw.ll,{color:'#888',weight:2,opacity:0.5}).addTo(leafletMap);
+    ceiSegmentLayers.push(bgRoute);
+  }
+  const ll=raw.ll,alt=raw.alt,hr=raw.hr,time=raw.time;
+  if(!ll||!alt||ll.length<2)return;
+
+  // Dimmed full route as background
+  if(polyline){
+    const coords=decodePolyline(polyline);
+    routeLayer=L.polyline(coords,{color:'#333',weight:2,opacity:.6}).addTo(leafletMap);
+    leafletMap.fitBounds(routeLayer.getBounds(),{padding:[20,20]});
+  }
+
+  // Use shared buildRawSegments pipeline (includes merge <50m)
+  if(!time){toast('Chýba time stream');return;}
+  const n=ll.length;
+  const smoothAlt=preSmoothAlt(alt,PRE_SMOOTH_WIN);
+  const cumDist=new Float64Array(n);
+  for(let i=1;i<n;i++) cumDist[i]=cumDist[i-1]+haversine(ll[i-1],ll[i]);
+  const grad=new Float32Array(n);
+  for(let i=1;i<n;i++){
+    let j=i-1;
+    while(j>0&&(cumDist[i]-cumDist[j])<SMOOTH_WIN_M) j--;
+    const dDist=cumDist[i]-cumDist[j];
+    const dAlt=smoothAlt[i]-smoothAlt[j];
+    grad[i]=dDist>0.5?(dAlt/dDist)*100:0;
+  }
+
+  const segs=buildRawSegments(hr||new Float32Array(n),time,smoothAlt,cumDist,grad,n);
+  let segCount=0;
+  for(const s of segs){
+    if(s.dist>=MIN_SEG_LEN||s.dh>=MIN_SEG_DH){
+      const segVam=s.time>0?s.dh/(s.time/3600):0;
+      const segHR=s.hrCnt>0?s.hrSum/s.hrCnt:0;
+      const segCei=segHR>0?segVam/segHR:null;
+      const color=ceiSegmentColor(segCei, currentMapActivity?.rideType);
+      const coords=ll.slice(s.startIdx,s.endIdx+1);
+      if(coords.length>=2){
+        // Glow: wider blurred layer underneath + sharp line on top
+        const glow=L.polyline(coords,{color,weight:14,opacity:0.18}).addTo(leafletMap);
+        const seg=L.polyline(coords,{color,weight:4,opacity:.95}).addTo(leafletMap);
+        ceiSegmentLayers.push(glow);
+        ceiSegmentLayers.push(seg);
+        segCount++;
+      }
+    }
+  }
+  toast(`${segCount} CEI2 segmentov zobrazených`);
+}
+
+function clearMapLayers(){
+  if(routeLayer){leafletMap.removeLayer(routeLayer);routeLayer=null;}
+  ceiSegmentLayers.forEach(l=>leafletMap.removeLayer(l));
+  ceiSegmentLayers=[];
+}
+
+// ─── ELEVATION CHART ──────────────────────────────────────────────────────────
+let elevChart=null;
+let elevRaw=null;
+let crosshairMarker=null;
+
+// Compute cumulative distance array in km from latlng stream
+function buildDistArr(ll){
+  const dist=[0];
+  for(let i=1;i<ll.length;i++) dist.push(dist[i-1]+haversine(ll[i-1],ll[i])/1000);
+  return dist;
+}
+
+// Format seconds to mm:ss
+// Format decimal number with comma separator
+function fmtDec(val,decimals=2){
+  return Number(val).toFixed(decimals).replace('.',',');
+}
+
+function fmtMMSS(secs){
+  if(secs>=3600){
+    const h=Math.floor(secs/3600);
+    const m=Math.floor((secs%3600)/60);
+    const s=Math.round(secs%60);
+    return `${h}:${m.toString().padStart(2,'0')}:${s.toString().padStart(2,'0')}`;
+  }
+  const m=Math.floor(secs/60),s=Math.round(secs%60);
+  return `${m}:${s.toString().padStart(2,'0')}`;
+}
+
+// buildPointCei now uses new VAM2 pipeline
+function buildPointCei(raw,n){
+  if(!raw.time) return new Array(n).fill(null);
+  return buildPointCei2(raw.hr,raw.time,raw.alt,raw.ll);
+}
+
+function ceiColor(v, rideType){
+  if(v==null) return 'rgba(55,55,55,0.7)';
+  if(rideType&&state?.activities){
+    const peers=state.activities
+      .filter(a=>a.hasHR&&a.zones?.cei2!=null&&a.rideType===rideType)
+      .map(a=>parseFloat(a.zones.cei2)).sort((a,b)=>a-b);
+    if(peers.length>=PEERS_COUNT){
+      const rank=peers.filter(v2=>v2<v).length;
+      const pct=Math.round(rank/peers.length*100);
+      if(pct>=70) return 'rgba(22,163,74,0.9)';
+      if(pct<30)  return 'rgba(220,38,38,0.9)';
+      return 'rgba(202,138,4,0.9)';
+    }
+  }
+  if(v>4.2)  return 'rgba(22,163,74,0.9)';
+  if(v>=3.6) return 'rgba(202,138,4,0.9)';
+  return 'rgba(220,38,38,0.9)';
+}
+
+async function buildElevChart(activity, mode){
+  const container=document.getElementById('elev-chart-container');
+  const canvas=document.getElementById('elev-chart');
+  if(!container||!canvas) return;
+
+  let raw=elevRaw;
+  if(!raw){
+    try{raw=await dbGet('streams',activity.id);}catch(e){}
+    if(raw) elevRaw=raw;
+  }
+  if(!raw?.alt||!raw?.ll){container.style.display='none';return;}
+  container.style.display='block';
+
+  const alt=raw.alt, ll=raw.ll, hr=raw.hr, time=raw.time;
+  const n=alt.length;
+
+  // Real cumulative distance
+  const distArr=buildDistArr(ll);
+  const totalKm=distArr[distArr.length-1];
+
+  // Downsample to max 500 points
+  const step=Math.max(1,Math.floor(n/500));
+
+  // Build scatter-style data points {x: km, y: alt}
+  const points=[], segColors=[];
+  const ranges=getBpmRanges(state.maxHR,state.zones);
+  const slopeArr=(mode==='hr'||mode==='cei')?smoothedSlopes(ll,alt):null;
+  const ceiArr=mode==='cei'?buildPointCei(raw,n):null;
+
+  for(let i=0;i<n;i+=step){
+    points.push({x:+distArr[i].toFixed(3), y:+alt[i].toFixed(1), origIdx:i});
+    let color='rgba(160,160,160,0.75)';
+    if(mode==='hr'&&hr&&hr[i]>0){
+      const zone=getZoneForBpm(Math.round(hr[i]),ranges);
+      const zc={z1:'rgba(37,99,235,0.85)',z2:'rgba(22,163,74,0.85)',z3:'rgba(202,138,4,0.85)',z4:'rgba(234,88,12,0.85)',z5:'rgba(220,38,38,0.85)'};
+      color=zc[zone]||color;
+    }else if(mode==='cei'){
+      color=ceiColor(ceiArr?ceiArr[i]:null, activity?.rideType);
+    }
+    segColors.push(color);
+  }
+
+  const altVals=points.map(p=>p.y);
+  const minAlt=Math.min(...altVals), maxAlt=Math.max(...altVals);
+  const range=maxAlt-minAlt||50;
+  const pad=range*0.15;
+  // Y axis: round to nearest 50
+  const yMin=Math.floor((minAlt-pad)/50)*50;
+  const yMax=Math.ceil((maxAlt+pad)/50)*50;
+  // X axis step
+  const xStep=totalKm<10?1:totalKm<30?2:totalKm<60?5:10;
+
+  if(elevChart) elevChart.destroy();
+
+  // Store points for mousemove lookup
+  canvas._elevPoints=points;
+  canvas._elevMode=mode;
+  canvas._elevTotalKm=totalKm;
+  canvas._elevRaw={alt,ll,hr,time,distArr,slopeArr,ceiArr:ceiArr||null};
+
+  elevChart=new Chart(canvas,{
+    type:'scatter',
+    data:{
+      datasets:[{
+        data:points,
+        pointRadius:0,
+        pointHoverRadius:0,
+        showLine:true,
+        fill:true,
+        backgroundColor:'rgba(160,160,160,0.15)',
+        segment:{
+          borderColor:(ctx)=>segColors[ctx.p0DataIndex]||'rgba(160,160,160,0.75)',
+          borderWidth:(ctx)=>{
+            const col=segColors[ctx.p0DataIndex]||'';
+            return(col&&!col.includes('160,160,160'))?4:1.5;
+          },
+        },
+        borderWidth:1.5,
+        tension:0.3,
+      }]
+    },
+    options:{
+      responsive:true,
+      maintainAspectRatio:false,
+      animation:false,
+      plugins:{
+        legend:{display:false},
+        tooltip:{enabled:false},
+      },
+      scales:{
+        x:{
+          type:'linear',
+          min:0, max:+totalKm.toFixed(2),
+          grid:{color:'rgba(255,255,255,0.07)'},
+          ticks:{
+            color:'#888',font:{family:'IBM Plex Mono',size:10},
+            maxRotation:0,
+            stepSize:xStep,
+            callback:(v)=>v%xStep===0?v+' km':'',
+          }
+        },
+        y:{
+          min:yMin, max:yMax,
+          grid:{color:'rgba(255,255,255,0.07)'},
+          ticks:{
+            color:'#888',font:{family:'IBM Plex Mono',size:10},
+            maxTicksLimit:6,
+            stepSize:50,
+            callback:(v)=>Number.isInteger(v/50)?v+' m':'',
+          }
+        }
+      }
+    }
+  });
+
+  // ── Mousemove on canvas for crosshair + tooltip (Strava style) ──
+  canvas.onmousemove=(e)=>{
+    const pts=canvas._elevPoints;
+    const raw2=canvas._elevRaw;
+    const totalKmLocal=canvas._elevTotalKm||1;
+    if(!pts||!raw2) return;
+    const rect=canvas.getBoundingClientRect();
+    const xPx=e.clientX-rect.left;
+    const chartArea=elevChart?.chartArea;
+    if(!chartArea) return;
+    // Only respond when within chart X area
+    if(xPx<chartArea.left||xPx>chartArea.right){
+      if(crosshairMarker) crosshairMarker.setStyle({opacity:0,fillOpacity:0});
+      hideElevTooltip();
+      hideElevCrosshairLine();
+      return;
+    }
+    const xRatio=(xPx-chartArea.left)/(chartArea.right-chartArea.left);
+    const kmVal=xRatio*totalKmLocal;
+    // Find nearest point by X only
+    let best=0,bestDist=Infinity;
+    for(let i=0;i<pts.length;i++){
+      const d=Math.abs(pts[i].x-kmVal);
+      if(d<bestDist){bestDist=d;best=i;}
+    }
+    const pt=pts[best];
+    const origIdx=pt.origIdx;
+    // Update map crosshair
+    if(crosshairMarker&&raw2.ll&&origIdx<raw2.ll.length){
+      crosshairMarker.setLatLng(raw2.ll[origIdx]);
+      crosshairMarker.setStyle({opacity:1,fillOpacity:1});
+    }
+    // Vertical line on chart
+    const lineX=rect.left+chartArea.left+xRatio*(chartArea.right-chartArea.left);
+    showElevCrosshairLine(lineX, rect.top+chartArea.top, rect.top+chartArea.bottom);
+    // Build tooltip content (items stacked vertically)
+    const mode2=canvas._elevMode;
+    const altVal=Math.round(pt.y);
+    const kmDisp=pt.x.toFixed(1).replace('.',',').replace('.',',');
+    const timeVal=raw2.time&&raw2.time[origIdx]!=null?raw2.time[origIdx]:null;
+    let lines=[];
+    if(timeVal!=null) lines.push({bold:true, text:fmtMMSS(timeVal)});
+    lines.push({label:'Vzd:',  val:`${kmDisp} km`});
+    lines.push({label:'Výška:',val:`${altVal} m`});
+    if(mode2==='hr'&&raw2.hr&&raw2.hr[origIdx]>0)
+      lines.push({label:'HR:', val:`${Math.round(raw2.hr[origIdx])} bpm`});
+    if(mode2==='cei'){
+      if(raw2.hr&&raw2.hr[origIdx]>0) lines.push({label:'HR:', val:`${Math.round(raw2.hr[origIdx])} bpm`});
+      const cv=raw2.ceiArr?raw2.ceiArr[origIdx]:null;
+      if(cv!=null){
+        // Compute percentile for this CEI value
+        const ceiPeers2=getPeers(currentMapActivity,'cei2');
+        let pctLabel='';
+        if(ceiPeers2.length>=PEERS_COUNT){
+          const ceiVals2=ceiPeers2.map(a=>parseFloat(a.zones.cei2)).sort((a,b)=>a-b);
+          const r=ceiVals2.filter(v=>v<cv).length;
+          const p=Math.round(r/ceiVals2.length*100);
+          const pc=p>=70?'#16a34a':p<30?'#dc2626':'#ca8a04';
+          pctLabel=` <span style="color:${pc}">(P${p})</span>`;
+        }
+        lines.push({label:'CEI:',val:fmtDec(cv)+pctLabel,html:true});
+      }
+    }
+    // Position tooltip: fixed Y at top of chart area, X follows cursor
+    showElevTooltip(e.clientX, rect.top+chartArea.top, lines);
+  };
+  canvas.onmouseleave=()=>{
+    if(crosshairMarker) crosshairMarker.setStyle({opacity:0,fillOpacity:0});
+    hideElevTooltip();
+    hideElevCrosshairLine();
+  };
+}
+
+// ── Elevation chart tooltip + crosshair line ──────────────────────────────────
+function showElevTooltip(cursorX, fixedY, lines){
+  let el=document.getElementById('elev-tooltip');
+  if(!el){
+    el=document.createElement('div');
+    el.id='elev-tooltip';
+    el.style.cssText=[
+      'position:fixed','background:#1a1a1a','border:1px solid #444',
+      'color:#e8e8e8','font-family:IBM Plex Mono,monospace','font-size:.78rem',
+      'padding:7px 12px','pointer-events:none','z-index:9999',
+      'white-space:nowrap','box-shadow:0 2px 8px rgba(0,0,0,.5)',
+    ].join(';');
+    document.body.appendChild(el);
+  }
+  el.innerHTML=`<div style="display:flex;flex-direction:column;gap:3px">`+
+    lines.map(l=>{
+      if(l.bold) return `<div style="font-weight:700;font-size:.84rem">${l.text}</div>`;
+      return `<div><span style="font-weight:700">${l.label}</span> ${l.val}</div>`;
+    }).join('')+
+  `</div>`;
+  el.style.display='block';
+  // Align top of tooltip with the container top (boundary between map and chart)
+  const container=document.getElementById('elev-chart-container');
+  const containerTop=container?container.getBoundingClientRect().top:fixedY;
+  el.style.top=containerTop+'px';
+  // Horizontal: 14px right of cursor, clamp to viewport
+  const w=el.offsetWidth||120;
+  const vw=window.innerWidth;
+  const left=Math.min(cursorX+14, vw-w-8);
+  el.style.left=left+'px';
+}
+function hideElevTooltip(){
+  const el=document.getElementById('elev-tooltip');
+  if(el) el.style.display='none';
+}
+
+function showElevCrosshairLine(x, yTop, yBottom){
+  let ln=document.getElementById('elev-crosshair-line');
+  if(!ln){
+    ln=document.createElement('div');
+    ln.id='elev-crosshair-line';
+    ln.style.cssText='position:fixed;width:1px;background:rgba(200,200,200,0.6);pointer-events:none;z-index:9998;';
+    document.body.appendChild(ln);
+  }
+  ln.style.left=x+'px';
+  ln.style.top=yTop+'px';
+  ln.style.height=(yBottom-yTop)+'px';
+  ln.style.display='block';
+}
+function hideElevCrosshairLine(){
+  const ln=document.getElementById('elev-crosshair-line');
+  if(ln) ln.style.display='none';
+}
+
+function initCrosshairMarker(){
+  if(crosshairMarker) leafletMap.removeLayer(crosshairMarker);
+  crosshairMarker=L.circleMarker([0,0],{
+    radius:8,color:'#fff',fillColor:'rgba(160,160,160,1)',fillOpacity:1,weight:2,
+    pane:'markerPane' // top layer
+  }).addTo(leafletMap);
+  crosshairMarker.setStyle({opacity:0,fillOpacity:0});
+}
+
+function updateElevLegend(mode){
+  const el=document.getElementById('elev-legend');
+  if(!el) return;
+  if(mode==='hr'){
+    const ranges=getBpmRanges(state.maxHR,state.zones);
+    const zColors=['#2563eb','#16a34a','#ca8a04','#ea580c','#dc2626'];
+    const zNames=['Z1','Z2','Z3','Z4','Z5'];
+    el.innerHTML=`
+      <div style="font-family:'IBM Plex Mono',monospace;font-size:.65rem;color:var(--muted);letter-spacing:1px;text-transform:uppercase;margin-bottom:4px;text-align:center">HR Zóny</div>
+      <div style="display:inline-grid;grid-template-columns:14px auto;gap:3px 7px;align-items:center;font-family:'IBM Plex Mono',monospace;font-size:.7rem">
+        ${ranges.map((r,i)=>{
+          const hi=r.hi>=999?'∞':r.hi;
+          return `<span style="display:inline-block;width:12px;height:12px;border-radius:2px;background:${zColors[i]}"></span>
+          <span><span style="color:${zColors[i]};font-weight:700">${zNames[i]}</span> <span style="color:var(--muted)">${r.lo}–${hi} bpm</span></span>`;
+        }).join('')}
+      </div>`;
+  }else{
+    el.innerHTML='';
+  }
+}
+
+function closeMap(){
+  document.getElementById('map-panel').style.display='none';
+  state.openActivityId=null;currentMapActivity=null;currentMapMode='normal';
+  elevRaw=null;
+  if(elevChart){elevChart.destroy();elevChart=null;}
+  if(crosshairMarker){leafletMap.removeLayer(crosshairMarker);crosshairMarker=null;}
+  document.getElementById('elev-chart-container').style.display='none';
+  clearMapLayers();renderTable();
+}
+
+// ─── RENDER ───────────────────────────────────────────────────────────────────
+function renderAll(){renderSummary();renderTable();}
+
+function renderSummary(){
+  const filtered=getFiltered();
+  const hrActs=filtered.filter(a=>a.hasHR&&a.zones);
+  const total=Object.fromEntries(ZKEYS.map(k=>[k,0]));
+  let totalSecs=0;
+  hrActs.forEach(a=>{ZKEYS.forEach(k=>{total[k]+=a.zones.secs[k];});totalSecs+=a.zones.total;});
+  const ranges=getBpmRanges(state.maxHR,state.zones);
+  ZONE_DEFS.forEach((def,i)=>{
+    const n=i+1,r=ranges[i],pct=totalSecs>0?total[def.key]/totalSecs*100:0;
+    document.getElementById(`sc-z${n}-bpm`).innerHTML=`${r.lo}–${r.hi===999?'∞':r.hi} bpm`;
+    document.getElementById(`sc-z${n}-pct`).textContent=fmtDec(pct,1)+'%';
+    document.getElementById(`sc-z${n}-time`).textContent=fmtTime(total[def.key]);
+    document.getElementById(`sc-z${n}-bar`).style.width=pct.toFixed(1)+'%';
+  });
+  document.getElementById('total-count').textContent=`${filtered.length} aktivít · ${hrActs.length} s HR dátami`;
+}
+
+function renderTable(){
+  const filtered=getFiltered();
+  const sorted=getSorted(filtered);
+  const pages=Math.ceil(sorted.length/state.pageSize);
+  if(state.page>=pages)state.page=0;
+  const slice=sorted.slice(state.page*state.pageSize,(state.page+1)*state.pageSize);
+  const tbody=document.getElementById('activity-tbody');tbody.innerHTML='';
+
+  slice.forEach(a=>{
+    const tr=document.createElement('tr');
+    tr.className='clickable'+(a.id===state.openActivityId?' active-row':'');
+    const date=new Date(a.date).toLocaleDateString('sk-SK',{day:'2-digit',month:'2-digit',year:'2-digit'});
+    const km=a.distance?(a.distance/1000).toFixed(1).replace('.',','):'–';
+    let zoneCells='';
+    if(a.hasHR&&a.zones){
+      const domKey=ZKEYS.reduce((best,k)=>a.zones.pct[k]>a.zones.pct[best]?k:best,ZKEYS[0]);
+      zoneCells=ZONE_DEFS.map(def=>{
+        const pct=a.zones.pct[def.key],isDom=def.key===domKey;
+        return`<td class="zone-pct-cell">${isDom
+          ?`<span class="zone-pct-dom" style="background:${def.color}20;color:${def.color}">${pct.toFixed(0)}%</span>`
+          :`<span class="zone-pct-dim" style="color:${def.color}">${pct.toFixed(0)}%</span>`}</td>`;
+      }).join('');
+    }else{
+      zoneCells=ZONE_DEFS.map(()=>`<td class="zone-pct-cell"><span style="color:var(--muted);font-size:.7rem">–</span></td>`).join('');
+    }
+    const z=a.zones;
+
+    const trimpBStr=z?.trimpBanister!=null?`<span style="color:#a78bfa">${z.trimpBanister}</span>`:'–';
+    const badge=a.hasHR&&a.zones?.cei2!=null?getCeiBadge(a):'';
+    const typeColor=RIDE_TYPE_COLORS[a.rideType]||'#666';
+    const typeCell=a.rideType
+      ?`<span style="font-family:'IBM Plex Mono',monospace;font-size:.65rem;color:${typeColor};border:1px solid ${typeColor};padding:1px 5px;white-space:nowrap">${a.rideType}</span>`
+      :'–';
+    tr.innerHTML=`
+      <td class="td-mono" style="white-space:nowrap">${date}</td>
+      <td style="text-align:center">${typeCell}</td>
+      <td style="min-width:160px">${a.name}</td>
+      <td class="td-mono" style="text-align:center;white-space:nowrap">${fmtTime(a.movingTime)}</td>
+      <td class="td-mono" style="text-align:center;white-space:nowrap">${km}</td>
+      ${zoneCells}
+      <td class="td-mono" style="text-align:center">${a.avgHR?Math.round(a.avgHR):'–'}</td>
+      <td class="td-mono" style="text-align:center">${a.maxHR?Math.round(a.maxHR):'–'}</td>
+      <td class="td-mono" style="text-align:center;white-space:nowrap">${a.elevation?Math.round(a.elevation)+' m':'–'}</td>
+      <td class="td-mono" style="text-align:center">${z?.vam2!=null?`<span style="color:var(--accent)">${z.vam2}</span>`:'–'}</td>
+      <td class="td-mono" style="text-align:center">${z?.cei2!=null?`<span style="color:var(--accent)">${fmtDec(z.cei2)}</span>`:'–'}${badge?` ${ceiArrow(badge)}`:''}</td>
+      <td class="td-mono" style="text-align:center">${trimpBStr}</td>
+    `;
+    tr.onclick=()=>openMap(a);
+    tbody.appendChild(tr);
+  });
+  renderPagination(pages);
+}
+
+function renderPagination(pages){
+  const el=document.getElementById('pagination');el.innerHTML='';
+  if(pages<=1)return;
+  for(let i=0;i<pages;i++){
+    const btn=document.createElement('button');
+    btn.className='page-btn'+(i===state.page?' active':'');
+    btn.textContent=i+1;btn.onclick=()=>{state.page=i;renderTable();};
+    el.appendChild(btn);
+  }
+}
+
+function getFiltered(){
+  const from=state.dateFrom?new Date(state.dateFrom):null;
+  const to=state.dateTo?new Date(state.dateTo+'T23:59:59'):null;
+  const[dMin,dMax]=state.slDist;
+  const[tMin,tMax]=state.slTime;
+  const[eMin,eMax]=state.slElev;
+  return state.activities.filter(a=>{
+    const d=new Date(a.date);
+    if(from&&d<from)return false;
+    if(to&&d>to)return false;
+    if(state.filter==='hr'&&!a.hasHR)return false;
+    if(state.filter==='nohr'&&a.hasHR)return false;
+    if(state.filter==='z2'&&a.rideType!=='Z2 ENDURANCE')return false;
+    if(state.filter==='interval'&&a.rideType!=='INTERVAL')return false;
+    if(state.filter==='tempo'&&a.rideType!=='TEMPO')return false;
+    if(state.filter==='mix'&&a.rideType!=='MIX')return false;
+    const km=a.distance/1000;
+    if(km<dMin||(dMax<200&&km>dMax))return false;
+    const hrs=a.movingTime/3600;
+    if(hrs<tMin||(tMax<12&&hrs>tMax))return false;
+    const elev=a.elevation;
+    if(elev<eMin||(eMax<3000&&elev>eMax))return false;
+    return true;
+  });
+}
+
+function setPreset(preset,btn){
+  document.querySelectorAll('.date-preset-btn').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  const now=new Date(),today=now.toISOString().slice(0,10);
+  if(preset==='year'){state.dateFrom=`${now.getFullYear()}-01-01`;state.dateTo=today;}
+  else if(preset==='last3'){const d=new Date(now);d.setMonth(d.getMonth()-3);state.dateFrom=d.toISOString().slice(0,10);state.dateTo=today;}
+  else if(preset==='last30'){const d=new Date(now);d.setDate(d.getDate()-30);state.dateFrom=d.toISOString().slice(0,10);state.dateTo=today;}
+  else{state.dateFrom=null;state.dateTo=null;}
+  document.getElementById('date-from').value=state.dateFrom||'';
+  document.getElementById('date-to').value=state.dateTo||'';
+  state.page=0;renderAll();
+}
+function setCustomRange(){
+  document.querySelectorAll('.date-preset-btn').forEach(b=>b.classList.remove('active'));
+  state.dateFrom=document.getElementById('date-from').value||null;
+  state.dateTo=document.getElementById('date-to').value||null;
+  state.page=0;renderAll();
+}
+
+function getSorted(arr){
+  const{col,dir}=state.sort;
+  return[...arr].sort((a,b)=>{
+    let va,vb;
+    if(col==='date'){va=a.date;vb=b.date;}
+    else if(col==='name'){va=a.name;vb=b.name;}
+    else if(col==='duration'){va=a.movingTime;vb=b.movingTime;}
+    else if(col==='distance'){va=a.distance??0;vb=b.distance??0;}
+    else if(col==='avghr'){va=a.avgHR??0;vb=b.avgHR??0;}
+    else if(col==='maxhr'){va=a.maxHR??0;vb=b.maxHR??0;}
+    else if(col==='elevation'){va=a.elevation??0;vb=b.elevation??0;}
+    else if(col==='type'){va=a.rideType||'';vb=b.rideType||'';}
+    else if(col==='vam2'){va=a.zones?.vam2??-1;vb=b.zones?.vam2??-1;}
+    else if(col==='cei2'){va=parseFloat(a.zones?.cei2??-1);vb=parseFloat(b.zones?.cei2??-1);}
+    else if(col==='trimpB'){va=a.zones?.trimpBanister??-1;vb=b.zones?.trimpBanister??-1;}
+    else if(col==='vam2'){va=a.zones?.vam2??-1;vb=b.zones?.vam2??-1;}
+    else if(col==='cei2'){va=parseFloat(a.zones?.cei2??-1);vb=parseFloat(b.zones?.cei2??-1);}
+    if(va<vb)return-dir;if(va>vb)return dir;return 0;
+  });
+}
+function setFilter(f,btn){
+  state.filter=f;state.page=0;
+  document.querySelectorAll('.filter-btn').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');renderAll();
+}
+function sortTable(col){
+  if(state.sort.col===col)state.sort.dir*=-1;else{state.sort.col=col;state.sort.dir=-1;}
+  renderTable();
+}
+
+// ─── UTILS ───────────────────────────────────────────────────────────────────
+function fmtTime(s){if(!s)return'0m';const h=Math.floor(s/3600),m=Math.floor((s%3600)/60);return h>0?`${h}h ${m}m`:`${m}m`;}
+function sleep(ms){return new Promise(r=>setTimeout(r,ms));}
+function toast(msg){const el=document.getElementById('toast');el.textContent=msg;el.classList.add('show');setTimeout(()=>el.classList.remove('show'),3500);}
+function setProgress(cur,total){document.getElementById('progress-fill').style.width=total>0?(cur/total*100)+'%':'0%';document.getElementById('progress-count').textContent=`${cur} / ${total}`;}
+function logProgress(msg){const log=document.getElementById('progress-log');const div=document.createElement('div');div.textContent=msg;log.appendChild(div);log.scrollTop=log.scrollHeight;document.getElementById('progress-label').textContent=msg;}
+</script>
+</body>
+</html>
