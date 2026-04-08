@@ -2028,7 +2028,7 @@ function renderTable(){
       zoneCells=ZONE_DEFS.map(def=>{
         const pct=a.zones.pct[def.key],isDom=def.key===domKey;
         return`<td class="zone-pct-cell" style="text-align:center">${isDom
-          ?`<span class="zone-pct-dom" style="background:${def.color}20;color:${def.color};display:inline-block">${pct.toFixed(0)}%</span>`
+          ?`<span class="zone-pct-dom" style="background:${def.color}20;color:${def.color}">${pct.toFixed(0)}%</span>`
           :`<span class="zone-pct-dim" style="color:${def.color}">${pct.toFixed(0)}%</span>`}</td>`;
       }).join('');
     }else{
