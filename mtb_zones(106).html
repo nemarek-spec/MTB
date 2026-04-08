@@ -333,11 +333,11 @@
           <th onclick="sortTable('name')" style="width:130px;min-width:0;text-align:left">Aktivita</th>
           <th onclick="sortTable('duration')" style="width:60px;text-align:center;white-space:nowrap">Trvanie</th>
           <th onclick="sortTable('distance')" style="width:44px;text-align:center;white-space:nowrap">km</th>
-          <th style="width:28px;text-align:center;color:var(--z1)">Z1</th>
-          <th style="width:28px;text-align:center;color:var(--z2)">Z2</th>
-          <th style="width:28px;text-align:center;color:var(--z3)">Z3</th>
-          <th style="width:28px;text-align:center;color:var(--z4)">Z4</th>
-          <th style="width:28px;text-align:center;color:var(--z5)">Z5</th>
+          <th style="width:46px;text-align:center;color:var(--z1)">Z1</th>
+          <th style="width:46px;text-align:center;color:var(--z2)">Z2</th>
+          <th style="width:46px;text-align:center;color:var(--z3)">Z3</th>
+          <th style="width:46px;text-align:center;color:var(--z4)">Z4</th>
+          <th style="width:46px;text-align:center;color:var(--z5)">Z5</th>
           <th onclick="sortTable('avghr')" style="width:46px;text-align:center;white-space:nowrap">Avg HR</th>
           <th onclick="sortTable('maxhr')" style="width:46px;text-align:center;white-space:nowrap">Max HR</th>
           <th onclick="sortTable('elevation')" style="width:46px;text-align:center;white-space:nowrap">↑ m</th>
@@ -2027,8 +2027,8 @@ function renderTable(){
       const domKey=ZKEYS.reduce((best,k)=>a.zones.pct[k]>a.zones.pct[best]?k:best,ZKEYS[0]);
       zoneCells=ZONE_DEFS.map(def=>{
         const pct=a.zones.pct[def.key],isDom=def.key===domKey;
-        return`<td class="zone-pct-cell" style="display:table-cell;text-align:center;vertical-align:middle">${isDom
-          ?`<span class="zone-pct-dom" style="background:${def.color}20;color:${def.color};display:block;text-align:center">${pct.toFixed(0)}%</span>`
+        return`<td class="zone-pct-cell" style="text-align:center">${isDom
+          ?`<span class="zone-pct-dom" style="background:${def.color}20;color:${def.color};white-space:nowrap">${pct.toFixed(0)}%</span>`
           :`<span class="zone-pct-dim" style="color:${def.color}">${pct.toFixed(0)}%</span>`}</td>`;
       }).join('');
     }else{
