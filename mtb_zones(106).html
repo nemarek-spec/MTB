@@ -126,7 +126,7 @@
   tr.active-row td{background:#1e1400 !important}
   .td-mono{font-family:'IBM Plex Mono',monospace;font-size:.76rem}
   .zone-pct-cell{text-align:center;min-width:36px;font-family:'IBM Plex Mono',monospace;font-size:.76rem;padding:6px 6px !important;overflow:hidden}
-  .zone-pct-dom{font-weight:700;font-size:.76rem;padding:2px 4px;border-radius:2px}
+  .zone-pct-dom{font-weight:700;padding:2px 4px;border-radius:2px}
   .zone-pct-dim{opacity:.65}
 
   /* PAGINATION */
@@ -2027,8 +2027,8 @@ function renderTable(){
       const domKey=ZKEYS.reduce((best,k)=>a.zones.pct[k]>a.zones.pct[best]?k:best,ZKEYS[0]);
       zoneCells=ZONE_DEFS.map(def=>{
         const pct=a.zones.pct[def.key],isDom=def.key===domKey;
-        return`<td class="zone-pct-cell" style="text-align:center">${isDom
-          ?`<span class="zone-pct-dom" style="background:${def.color}20;color:${def.color};white-space:nowrap">${pct.toFixed(0)}%</span>`
+        return`<td class="zone-pct-cell">${isDom
+          ?`<span class="zone-pct-dom" style="background:${def.color}20;color:${def.color}">${pct.toFixed(0)}%</span>`
           :`<span class="zone-pct-dim" style="color:${def.color}">${pct.toFixed(0)}%</span>`}</td>`;
       }).join('');
     }else{
